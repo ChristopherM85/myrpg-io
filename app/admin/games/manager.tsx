@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 type Game = Record<string, any>;
-export default function GameManager({ role, games, sources }: { role: string; games: Game[]; sources: Game[] }) {
+export default function GameManager({ role, games, sources, calendarItems }: { role: string; games: Game[]; sources: Game[]; calendarItems: Game[] }) {
   const [message, setMessage] = useState("");
   const send = async (body: Record<string, unknown>) => {
     const response = await fetch("/api/admin/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -42,6 +42,7 @@ export default function GameManager({ role, games, sources }: { role: string; ga
       </article>)}</div>
     </section>
     <section><h2>Source Registry coverage</h2><p className="console-sub">{sources.filter((source) => source.approved).length} approved source domains. Candidate creation is blocked until its official source domain is approved.</p></section>
+    <section><h2>Release calendar review</h2><p className="console-sub">These 10 items are private drafts. Confirm the date label and confidence before publishing.</p><div className="console-grid">{calendarItems.filter((item) => !item.published && item.reviewStatus !== "archived").map((item) => <article className="console-card" key={item.id}><small>{String(item.reviewStatus).toUpperCase()} · {item.dateConfidence}</small><h3>{item.title}</h3><p>{item.dateLabel}</p><small>Checked {item.factCheckedAt?.slice(0, 10)} · <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Official source</a></small><div className="row"><button onClick={() => send({ kind: "calendar", action: "approve", id: item.id })} disabled={role !== "owner"}>Approve</button><button onClick={() => send({ kind: "calendar", action: "reject", id: item.id })}>Reject</button><button onClick={() => send({ kind: "calendar", action: "archive", id: item.id })}>Archive</button><button onClick={() => send({ kind: "calendar", action: "publish", id: item.id })} disabled={role !== "owner" || item.reviewStatus !== "approved"}>Publish</button></div></article>)}</div></section>
     {message && <p className="console-message">{message}</p>}
   </main>;
 }
