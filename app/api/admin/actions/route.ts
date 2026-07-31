@@ -40,6 +40,9 @@ export async function POST(request: Request) {
     const statuses: Record<string, "review" | "published" | "rejected" | "archived" | "draft"> = { approve: "review", publish: "published", reject: "rejected", archive: "archived", restore: "review", unpublish: "draft" };
     const status = statuses[body.action ?? ""];
     if (!status && body.action !== "edit") return Response.json({ error: "Unknown article action" }, { status: 400 });
+    const currentArticle=(await db.select().from(articles).where(eq(articles.id,body.id)).limit(1))[0];
+    if(!currentArticle) return Response.json({error:"Article not found"},{status:404});
+    if(body.action==="publish") { let host="";try{host=new URL(currentArticle.sourceUrl).hostname.toLowerCase().replace(/^www\./,"")}catch{} const approved=(await db.select().from(sources).where(eq(sources.domain,host)).limit(1))[0]?.approved; const checklist=[Boolean(currentArticle.title.trim()),Boolean(currentArticle.summary.trim()),Boolean(currentArticle.factCheckedAt),Boolean(approved),currentArticle.status==="review"]; if(checklist.some(v=>!v)) return Response.json({error:"Publication checklist incomplete: source approval, review status, citation, fact-check date, title, and draft are required. An approved lead visual or branded fallback will be used."},{status:409}); }
     if (body.action === "edit") await db.update(articles).set({ summary: String(body.value ?? ""), updatedAt: time }).where(eq(articles.id, body.id));
     else await db.update(articles).set({ status, publishedAt: status === "published" ? time : null, updatedAt: time }).where(eq(articles.id, body.id));
     await audit(db, email, `article_${body.action}`, "article", body.id, { status });

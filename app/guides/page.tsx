@@ -1,0 +1,1 @@
+export const metadata={title:"MMO Guides | MyRPG.IO",description:"Practical MMO guides, published only after editorial review."};export default function Guides(){return <main style={{maxWidth:900,margin:"auto",padding:48}}><p>MYRPG / GUIDES</p><h1>Game Guides</h1><p>Practical, source-backed guides will appear here after human editorial approval.</p></main>}
