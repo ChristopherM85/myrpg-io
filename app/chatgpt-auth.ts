@@ -7,6 +7,11 @@ export type ChatGPTUser = {
   fullName: string | null;
 };
 
+// Cloudflare Access authenticates the Director Console before a request reaches
+// this Worker and supplies the verified identity in this header. The legacy
+// Sites header remains as a fallback for the existing hosted deployment during
+// the migration period.
+const ACCESS_EMAIL_HEADER = "cf-access-authenticated-user-email";
 const USER_EMAIL_HEADER = "oai-authenticated-user-email";
 const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER =
@@ -18,7 +23,7 @@ const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
+  const email = requestHeaders.get(ACCESS_EMAIL_HEADER) ?? requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) return null;
 
   const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
