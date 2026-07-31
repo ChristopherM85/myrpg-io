@@ -43,6 +43,13 @@
       "when": 1785533074345,
       "tag": "0005_bent_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785534058157,
+      "tag": "0006_brown_supernaut",
+      "breakpoints": true
     }
   ]
 }
