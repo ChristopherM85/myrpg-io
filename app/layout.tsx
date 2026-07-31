@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://myrpg.io"),
   title: "MyRPG.IO — MMO intelligence, human approved",
   description: "A trustworthy MMO news, discovery, and game directory experience.",
   icons: { icon: "/favicon.svg" },
