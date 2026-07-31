@@ -1,6 +1,6 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { articles, auditEvents, budgetPolicies, mediaAssets, siteSettings, sources, users } from "../../../../db/schema";
+import { articles, auditEvents, budgetPolicies, games, mediaAssets, siteSettings, sources, users } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 const stamp = () => new Date().toISOString();
@@ -22,7 +22,7 @@ async function actor() {
 }
 function allowed(role: Role, action: string) {
   if (role === "owner") return true;
-  if (role === "admin") return ["article", "source"].includes(action);
+  if (role === "admin") return ["article", "source", "media", "game"].includes(action);
   return action === "article";
 }
 async function audit(db: ReturnType<typeof getDb>, email: string, action: string, type: string, entityId?: string, details?: unknown) {
@@ -31,10 +31,13 @@ async function audit(db: ReturnType<typeof getDb>, email: string, action: string
 export async function POST(request: Request) {
   const identity = await actor();
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; sourceUrl?:string; sourceType?:string; credit?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number };
+  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; sourceUrl?:string; sourceType?:string; credit?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; releaseDate?:string; officialUrl?:string; factCheckedAt?:string };
   const { db, email, role } = identity; const kind = body.kind ?? "";
   if (!allowed(role, kind)) return Response.json({ error: "Owner permission required" }, { status: 403 });
   const time = stamp();
+  if(kind==="game"){
+    if(body.action==="create"){const fields=[body.name,body.slug,body.status,body.platforms,body.businessModel,body.combat,body.setting,body.focus,body.releaseDate,body.officialUrl,body.sourceUrl,body.factCheckedAt];if(fields.some(x=>!String(x||"").trim())||!String(body.slug).match(/^[a-z0-9-]+$/))return Response.json({error:"All factual fields are required; slug must be lowercase letters, numbers, and hyphens."},{status:400});let host="";try{host=new URL(String(body.sourceUrl)).hostname.replace(/^www\./,"")}catch{return Response.json({error:"Use a complete official source URL."},{status:400})}const source=(await db.select().from(sources).where(eq(sources.domain,host)).limit(1))[0];if(!source?.approved)return Response.json({error:"Source domain must be approved first."},{status:400});await db.insert(games).values({id:id(),slug:body.slug!,name:body.name!,status:body.status!,platforms:body.platforms!,businessModel:body.businessModel!,combat:body.combat!,setting:body.setting!,focus:body.focus!,releaseDate:body.releaseDate!,officialUrl:body.officialUrl!,sourceUrl:body.sourceUrl!,factCheckedAt:body.factCheckedAt!,published:false,createdAt:time,updatedAt:time});await audit(db,email,"game_created","game",body.slug);return Response.json({ok:true})}
+    if(!body.id)return Response.json({error:"Game required"},{status:400});if(body.action==="publish"&&role!=="owner")return Response.json({error:"Only the Owner can publish games."},{status:403});const game=(await db.select().from(games).where(eq(games.id,body.id)).limit(1))[0];if(!game)return Response.json({error:"Game not found"},{status:404});if(body.action==="publish"){const required=[game.name,game.slug,game.status,game.platforms,game.businessModel,game.combat,game.setting,game.focus,game.releaseDate,game.officialUrl,game.sourceUrl,game.factCheckedAt];if(required.some(x=>!x))return Response.json({error:"Publish readiness blocked: required factual fields are incomplete."},{status:409});let host="";try{host=new URL(game.sourceUrl!).hostname.replace(/^www\./,"")}catch{}if(!(await db.select().from(sources).where(eq(sources.domain,host)).limit(1))[0]?.approved)return Response.json({error:"Publish readiness blocked: source is not approved."},{status:409});await db.update(games).set({published:true,updatedAt:time}).where(eq(games.id,body.id));}else if(body.action==="unpublish")await db.update(games).set({published:false,updatedAt:time}).where(eq(games.id,body.id));await audit(db,email,`game_${body.action}`,"game",body.id);return Response.json({ok:true})}
   if (kind === "article" && body.id) {
     if (body.action === "publish" && role !== "owner") return Response.json({ error: "Only the Owner can publish." }, { status: 403 });
     const statuses: Record<string, "review" | "published" | "rejected" | "archived" | "draft"> = { approve: "review", publish: "published", reject: "rejected", archive: "archived", restore: "review", unpublish: "draft" };
