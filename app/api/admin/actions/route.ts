@@ -1,6 +1,6 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { articles, auditEvents, budgetPolicies, siteSettings, sources, users } from "../../../../db/schema";
+import { articles, auditEvents, budgetPolicies, mediaAssets, siteSettings, sources, users } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 const stamp = () => new Date().toISOString();
@@ -31,11 +31,12 @@ async function audit(db: ReturnType<typeof getDb>, email: string, action: string
 export async function POST(request: Request) {
   const identity = await actor();
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string };
+  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; sourceUrl?:string; sourceType?:string; credit?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number };
   const { db, email, role } = identity; const kind = body.kind ?? "";
   if (!allowed(role, kind)) return Response.json({ error: "Owner permission required" }, { status: 403 });
   const time = stamp();
   if (kind === "article" && body.id) {
+    if (body.action === "publish" && role !== "owner") return Response.json({ error: "Only the Owner can publish." }, { status: 403 });
     const statuses: Record<string, "review" | "published" | "rejected" | "archived" | "draft"> = { approve: "review", publish: "published", reject: "rejected", archive: "archived", restore: "review", unpublish: "draft" };
     const status = statuses[body.action ?? ""];
     if (!status && body.action !== "edit") return Response.json({ error: "Unknown article action" }, { status: 400 });
@@ -43,6 +44,19 @@ export async function POST(request: Request) {
     else await db.update(articles).set({ status, publishedAt: status === "published" ? time : null, updatedAt: time }).where(eq(articles.id, body.id));
     await audit(db, email, `article_${body.action}`, "article", body.id, { status });
     return Response.json({ ok: true });
+  }
+  if (kind === "media") {
+    const officialTypes = ["official_press_kit","official_game_site","verified_store","official_trailer","owner_upload"];
+    if (body.action === "add") {
+      if (!body.articleId || !body.altText || !body.sourceType || !officialTypes.includes(body.sourceType)) return Response.json({ error: "Article, alt text, and an approved source type are required." }, { status: 400 });
+      if (body.sourceType !== "owner_upload") { try { const host = new URL(String(body.sourceUrl || body.assetUrl)).hostname.toLowerCase().replace(/^www\./, ""); const allowedSource = await db.select().from(sources).where(eq(sources.domain, host)).limit(1); if (!allowedSource[0]?.approved) return Response.json({ error: "Official media source must be approved in Source Registry." }, { status: 400 }); } catch { return Response.json({ error: "Use a complete approved source URL." }, { status: 400 }); } }
+      await db.insert(mediaAssets).values({ id:id(), articleId:body.articleId, assetUrl:body.assetUrl||null, sourceUrl:body.sourceUrl||null, sourceType:body.sourceType, credit:body.credit||null, altText:body.altText, caption:body.caption||null, width:Math.max(1,Number(body.width)||1200), height:Math.max(1,Number(body.height)||675), placement:["lead","supporting"].includes(body.placement||"")?body.placement!:"lead", status:"pending_review", createdAt:time, updatedAt:time });
+      await audit(db,email,"media_added","media",body.articleId,{sourceType:body.sourceType,placement:body.placement}); return Response.json({ok:true});
+    }
+    if (!body.id) return Response.json({error:"Missing media asset"},{status:400});
+    const states:Record<string,string>={approve:"approved",reject:"rejected",archive:"archived",restore:"pending_review"}; const status=states[body.action||""]; if(!status) return Response.json({error:"Unknown media action"},{status:400});
+    if(body.action==="approve"&&role!=="owner") return Response.json({error:"Only the Owner can approve media."},{status:403});
+    await db.update(mediaAssets).set({status,updatedAt:time}).where(eq(mediaAssets.id,body.id)); await audit(db,email,`media_${body.action}`,"media",body.id,{status}); return Response.json({ok:true});
   }
   if (kind === "source") {
     if (body.action === "add") {
