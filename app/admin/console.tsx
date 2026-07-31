@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import "./console.module.css";
 type Item = { id:string; title?:string; summary?:string; status?:string; domain?:string; label?:string; approved?:boolean; agent?:string; action?:string; createdAt?:string; actorEmail?:string; entityType?:string; articleId?:string; sourceType?:string; altText?:string; credit?:string; placement?:string };
 export default function Console({ role, articles, sources, runs, audits, media, settings }: { role:string; articles:Item[]; sources:Item[]; runs:Item[]; audits:Item[]; media:Item[]; settings:{simulation:boolean; promotion:boolean; daily:number; perJob:number; stop:boolean} }) {
  const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
