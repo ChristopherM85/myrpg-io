@@ -10,14 +10,5 @@ no_bundle = true
 [assets]
 directory = "dist/client"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "myrpg-production"
-database_id = "a9c8b715-3698-4d47-a606-0b5bbd60a103"
-
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "myrpg-media"
-
 [observability]
 enabled = true
