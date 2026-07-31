@@ -1,16 +1,100 @@
 "use client";
+
 import { useState } from "react";
 import styles from "./console.module.css";
-void styles;
-type Item = { id:string; title?:string; summary?:string; status?:string; domain?:string; label?:string; approved?:boolean; agent?:string; action?:string; createdAt?:string; actorEmail?:string; entityType?:string; articleId?:string; sourceType?:string; altText?:string; credit?:string; placement?:string };
-export default function Console({ role, articles, sources, runs, audits, media, settings }: { role:string; articles:Item[]; sources:Item[]; runs:Item[]; audits:Item[]; media:Item[]; settings:{simulation:boolean; promotion:boolean; daily:number; perJob:number; stop:boolean} }) {
- const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
- const send=async (url:string, body?:unknown)=>{setBusy(true); const res=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined}); const data=await res.json(); setBusy(false); setMessage(data.error||"Saved. Refreshing…"); if(data.ok||data.articleId) setTimeout(()=>location.reload(),500);};
- const control=(kind:string,action:string,id?:string,value?:string|boolean|number)=>send("/api/admin/actions",{kind,action,id,value});
- return <main className="console"><div className="console-kicker">MYRPG / DIRECTOR CONSOLE</div><h1>Editorial operations</h1><p className="console-sub">Role: <b>{role}</b> · Simulation only · Live model calls are off · Publishing is human-controlled.</p><div className="console-actions"><button disabled={busy} onClick={()=>send("/api/admin/simulate")}>Create simulation candidate</button><button disabled={busy} onClick={()=>control("budget","stop",undefined,!settings.stop)}>{settings.stop?"Release emergency stop":"Emergency stop"}</button><button disabled={busy} onClick={()=>control("settings","promotion",undefined,!settings.promotion)}>{settings.promotion?"Hide MyMafia placements":"Show MyMafia placements"}</button></div>{message&&<p className="console-message">{message}</p>}
- <section><h2>Review Queue & Content Library</h2><div className="console-grid">{articles.length?articles.map(a=><article className="console-card" key={a.id}><small>{a.status?.toUpperCase()} · human review required</small><h3>{a.title}</h3><p>{a.summary}</p><div className="row">{["approve","publish","reject","archive","restore","unpublish"].map(x=><button key={x} disabled={busy} onClick={()=>control("article",x,a.id)}>{x}</button>)}</div></article>):<p>No records yet. Create a deterministic simulation candidate to test the full pipeline.</p>}</div></section>
- <section><h2>Source Registry</h2><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);send("/api/admin/actions",{kind:"source",action:"add",label:f.get("label"),domain:f.get("domain")})}} className="source-form"><input name="label" placeholder="Source label" required/><input name="domain" placeholder="https://official-game-site.com" required/><button disabled={busy}>Add source</button></form><div className="console-grid">{sources.map(s=><article className="console-card" key={s.id}><b>{s.label}</b><p>{s.domain}</p><button disabled={busy} onClick={()=>control("source",s.approved?"disable":"approve",s.id)}>{s.approved?"Disable":"Approve"}</button></article>)}</div></section>
- <section><h2>Media Review</h2><p className="console-sub">Only owner uploads or approved official press-kit, game-site, store, and trailer artwork may be added. Public display requires Owner approval.</p><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);send("/api/admin/actions",{kind:"media",action:"add",articleId:f.get("articleId"),assetUrl:f.get("assetUrl"),sourceUrl:f.get("sourceUrl"),sourceType:f.get("sourceType"),altText:f.get("altText"),credit:f.get("credit"),caption:f.get("caption"),placement:f.get("placement"),width:1200,height:675})}} className="source-form"><select name="articleId" required><option value="">Choose article</option>{articles.map(a=><option value={a.id} key={a.id}>{a.title}</option>)}</select><select name="sourceType"><option value="official_press_kit">Official press kit</option><option value="official_game_site">Official game site</option><option value="verified_store">Verified store</option><option value="official_trailer">Official trailer</option><option value="owner_upload">Owner upload / R2</option></select><select name="placement"><option value="lead">Lead visual</option><option value="supporting">Supporting visual</option></select><input name="assetUrl" placeholder="Approved asset URL or R2 key"/><input name="sourceUrl" placeholder="Official source URL"/><input name="altText" placeholder="Descriptive alt text" required/><input name="credit" placeholder="Credit / rights note"/><input name="caption" placeholder="Caption"/><button disabled={busy}>Submit media for review</button></form><div className="console-grid">{media.map(m=><article className="console-card" key={m.id}><small>{m.status?.toUpperCase()} · {m.sourceType} · {m.placement}</small><p>{m.altText}</p><p>{m.credit||"No credit supplied"}</p><div className="row">{["approve","reject","archive","restore"].map(x=><button key={x} disabled={busy} onClick={()=>control("media",x,m.id)}>{x}</button>)}</div></article>)}</div></section>
- <section><h2>Budget Dashboard & Network Promotions</h2><div className="console-grid"><article className="console-card"><b>Simulation mode</b><p>{settings.simulation?"Enabled — deterministic, zero-cost runs":"Disabled"}</p><button onClick={()=>control("settings","simulation",undefined,!settings.simulation)}>Toggle simulation</button></article><article className="console-card"><b>Hard caps</b><p>Daily ${ (settings.daily/100).toFixed(2) } · per job ${ (settings.perJob/100).toFixed(2) }</p><button onClick={()=>control("budget","daily",undefined,prompt("Daily cap in cents",String(settings.daily))||settings.daily)}>Set daily cap</button></article><article className="console-card"><b>MyMafia network placement</b><p>{settings.promotion?"Visible and clearly labelled":"Hidden"}; anonymous clicks only.</p></article></div></section>
- <section><h2>Agent Runs</h2><div className="console-grid">{runs.map(r=><article className="console-card" key={r.id}><b>{r.agent}</b><p>{r.status} · $0.00 simulation cost</p></article>)}</div></section><section><h2>Audit Log</h2><div className="console-grid">{audits.map(a=><article className="console-card" key={a.id}><b>{a.action}</b><p>{a.actorEmail} · {a.entityType} · {a.createdAt}</p></article>)}</div></section><section><h2>Approved Memory & Disagreements</h2><p className="console-sub">Reserved D1-backed records for approved facts and conflicts. A simulation review packet exposes citations, confidence, source age, duplicate checks, and validation outcome before any manual publication.</p></section></main>
+
+type Item = {
+  id: string;
+  title?: string;
+  summary?: string;
+  status?: string;
+  domain?: string;
+  label?: string;
+  approved?: boolean;
+  agent?: string;
+  action?: string;
+  createdAt?: string;
+  actorEmail?: string;
+  entityType?: string;
+  sourceType?: string;
+  altText?: string;
+  credit?: string;
+  placement?: string;
+};
+
+type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
+
+export default function Console({ role, articles, sources, runs, audits, media, settings }: {
+  role: string; articles: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function send(body: Record<string, unknown>, url = "/api/admin/actions") {
+    setBusy(true);
+    try {
+      const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const result = await response.json();
+      setMessage(result.error || "Saved. Refreshing…");
+      if (result.ok || result.articleId) setTimeout(() => location.reload(), 500);
+    } catch {
+      setMessage("Unable to save. Please refresh and try again.");
+    } finally { setBusy(false); }
+  }
+
+  const action = (kind: string, actionName: string, id?: string, value?: string | boolean | number) => send({ kind, action: actionName, id, value });
+  const sourceHost = (value?: string) => { try { return new URL(value || "").hostname; } catch { return value || "Source missing"; } };
+
+  return <main className={styles.root}>
+    <header className={styles.header}>
+      <div className={styles.kicker}>MYRPG / DIRECTOR CONSOLE</div>
+      <h1>Editorial operations</h1>
+      <p>Role: <strong>{role}</strong> · Simulation only · Live model calls are off · Publishing is human-controlled.</p>
+      <div className={styles.actions}>
+        <button className={styles.primary} disabled={busy} onClick={() => send({}, "/api/admin/simulate")}>Create simulation candidate</button>
+        <button disabled={busy} onClick={() => action("budget", "stop", undefined, !settings.stop)}>{settings.stop ? "Release emergency stop" : "Emergency stop"}</button>
+        <button disabled={busy} onClick={() => action("settings", "promotion", undefined, !settings.promotion)}>{settings.promotion ? "Hide MyMafia placements" : "Show MyMafia placements"}</button>
+      </div>
+      {message && <p className={styles.message}>{message}</p>}
+    </header>
+
+    <section className={styles.section}>
+      <h2>Review Queue & Content Library</h2>
+      <p className={styles.helper}>Nothing can publish until you approve it.</p>
+      <div className={styles.grid}>{articles.length ? articles.map((article) => <article className={styles.card} key={article.id}>
+        <small>{article.status?.toUpperCase() || "DRAFT"} · human review required</small><h3>{article.title}</h3><p>{article.summary}</p>
+        <div className={styles.row}>{["approve", "publish", "reject", "archive", "restore", "unpublish"].map((name) => <button key={name} disabled={busy} onClick={() => action("article", name, article.id)}>{name}</button>)}</div>
+      </article>) : <div className={styles.empty}>No records yet. Create a deterministic simulation candidate to test the full review workflow.</div>}</div>
+    </section>
+
+    <section className={styles.section}>
+      <h2>Source Registry</h2>
+      <form className={styles.form} onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); send({ kind: "source", action: "add", label: values.get("label"), domain: values.get("domain") }); }}>
+        <input name="label" placeholder="Source label" required /><input name="domain" placeholder="https://official-game-site.com" required /><button disabled={busy}>Add source</button>
+      </form>
+      <div className={styles.grid}>{sources.map((source) => <article className={styles.card} key={source.id}><h3>{source.label}</h3><p>{source.domain}</p><button disabled={busy} onClick={() => action("source", source.approved ? "disable" : "approve", source.id)}>{source.approved ? "Disable" : "Approve"}</button></article>)}</div>
+    </section>
+
+    <section className={styles.section}>
+      <h2>Media Review</h2><p className={styles.helper}>Use only approved owner uploads or official game media. An Owner must approve display.</p>
+      <div className={styles.grid}>{media.length ? media.map((item) => <article className={styles.card} key={item.id}><small>{item.status?.toUpperCase()} · {item.sourceType} · {item.placement}</small><h3>{item.altText}</h3><p>{item.credit || "No credit supplied"}</p><div className={styles.row}>{["approve", "reject", "archive", "restore"].map((name) => <button key={name} disabled={busy} onClick={() => action("media", name, item.id)}>{name}</button>)}</div></article>) : <div className={styles.empty}>No media is awaiting review.</div>}</div>
+    </section>
+
+    <section className={styles.section}>
+      <h2>Budget & Network Promotions</h2>
+      <div className={styles.grid}>
+        <article className={styles.card}><h3>Simulation mode</h3><p>{settings.simulation ? "Enabled — deterministic, zero-cost runs." : "Disabled"}</p><button disabled={busy} onClick={() => action("settings", "simulation", undefined, !settings.simulation)}>Toggle simulation</button></article>
+        <article className={styles.card}><h3>Hard caps</h3><p>Daily ${ (settings.daily / 100).toFixed(2) } · per job ${ (settings.perJob / 100).toFixed(2) }</p></article>
+        <article className={styles.card}><h3>MyMafia network placement</h3><p>{settings.promotion ? "Visible and clearly labelled." : "Hidden."} Anonymous clicks only.</p></article>
+      </div>
+    </section>
+
+    <section className={styles.section}>
+      <h2>Agent Runs</h2><div className={styles.grid}>{runs.length ? runs.map((run) => <article className={styles.card} key={run.id}><h3>{run.agent}</h3><p>{run.status} · $0.00 simulation cost</p></article>) : <div className={styles.empty}>No agent runs yet.</div>}</div>
+    </section>
+
+    <section className={styles.section}>
+      <h2>Audit Log</h2><div className={styles.grid}>{audits.length ? audits.map((audit) => <article className={styles.card} key={audit.id}><h3>{audit.action}</h3><p>{audit.actorEmail} · {audit.entityType} · {audit.createdAt}</p></article>) : <div className={styles.empty}>Actions will appear here after the first review decision.</div>}</div>
+    </section>
+  </main>;
 }
