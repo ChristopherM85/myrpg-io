@@ -1,15 +1,4 @@
-import { getDb } from "../../db";
-import { articles } from "../../db/schema";
-import { eq } from "drizzle-orm";
-
-export const dynamic = "force-dynamic";
-export const metadata = { title: "MMO News | MyRPG.IO", description: "Human-reviewed MMORPG news with source-linked editorial notes.", alternates: { canonical: "https://myrpg.io/news" }, openGraph: { title: "MMO News | MyRPG.IO", description: "Human-reviewed MMORPG news with source-linked editorial notes.", url: "https://myrpg.io/news" } };
-
-export default async function News() {
-  let rows: any[] = [];
-  try { rows = await getDb().select().from(articles).where(eq(articles.status, "published")); } catch { /* An empty state is safer than public draft data. */ }
-  return <main style={{ maxWidth: 900, margin: "auto", padding: 48 }}>
-    <nav aria-label="Breadcrumb"><a href="/">Home</a> / News</nav><p>MYRPG / NEWS</p><h1>MMO News</h1><p>Source-linked and human-reviewed. No autonomous publishing.</p>
-    {rows.length ? rows.map((article) => <article key={article.id}><h2><a href={`/articles/${article.slug}`}>{article.title}</a></h2><p>{article.summary}</p><small>Fact-checked: {article.factCheckedAt} · <a href={article.sourceUrl} rel="noopener noreferrer" target="_blank">Official source</a> · AI-assisted, human-reviewed</small></article>) : <p>Published coverage will appear after human review.</p>}
-  </main>;
-}
+import { getDb } from "../../db"; import { articles } from "../../db/schema"; import { eq } from "drizzle-orm"; import { PublicPage } from "../components/PublicChrome";
+export const dynamic="force-dynamic"; export const metadata={title:"MMO News | MyRPG.IO",description:"Human-reviewed MMO news with source-linked editorial notes.",alternates:{canonical:"https://myrpg.io/news"}};
+export default async function News(){let rows:any[]=[];try{rows=await getDb().select().from(articles).where(eq(articles.status,"published"))}catch{}return <PublicPage><nav aria-label="Breadcrumb"><a href="/">Home</a> / News</nav><p style={eyebrow}>MYRPG / NEWS</p><h1 style={heading}>MMO news</h1><p style={muted}>Source-linked and human-reviewed. No autonomous publishing.</p>{rows.length?<section style={{marginTop:28}}>{rows.map(a=><article key={a.id} style={row}><h2><a href={`/articles/${a.slug}`} style={link}>{a.title}</a></h2><p style={muted}>{a.summary}</p><small>Recently fact-checked: {a.factCheckedAt?.slice(0,10)} · <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" style={link}>Official source</a> · AI-assisted, human-reviewed</small></article>)}</section>:<section style={empty}><h2>News is reviewed before it goes live</h2><p>No published editorial coverage is available yet. MyRPG never fills this space with simulated or unreviewed stories.</p></section>}</PublicPage>}
+const eyebrow={color:"#76f5e3",fontSize:11,fontWeight:800,letterSpacing:1.5,marginTop:30};const heading={fontSize:"clamp(2.6rem,7vw,5rem)",letterSpacing:"-.06em",margin:"12px 0"};const muted={color:"#aeb6c7",lineHeight:1.6};const row={borderTop:"1px solid #273044",padding:"20px 0"};const link={color:"#76f5e3"};const empty={borderLeft:"3px solid #c9a666",padding:"20px",background:"#101521",marginTop:28};
