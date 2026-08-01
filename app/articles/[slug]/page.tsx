@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { agentRuns, articles, games, mediaAssets } from "../../../db/schema";
 import { EditorialVisual } from "../../components/EditorialVisual";
+import { PublicFooter, PublicHeader } from "../../components/PublicChrome";
 
 export const dynamic = "force-dynamic";
 const base = "https://myrpg.io";
@@ -27,7 +28,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!record) return notFound();
   const { article, visual, relatedGame } = record;
   const url = `${base}/articles/${article.slug}`;
-  return <main style={shell}>
+  return <><PublicHeader /><main style={shell}>
     <nav aria-label="Breadcrumb" style={breadcrumb}><a href="/">Home</a> / <a href="/news">News</a> / {article.title}</nav>
     <p style={kicker}>AI-ASSISTED · HUMAN-REVIEWED</p>
     <h1 style={heading}>{article.title}</h1>
@@ -38,7 +39,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <aside style={network}><small>FEATURED GAME FROM THE MYRPG NETWORK</small><p>MyMafia.io — Build an empire. Keep an alibi.</p><a href="https://mymafia.io?utm_source=myrpg.io&utm_medium=network_promo&utm_campaign=mymafia_beta" target="_blank" rel="noopener sponsored">Enter the city →</a></aside>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: article.title, description: article.summary, datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: url, author: { "@type": "Organization", name: "MyRPG.IO" }, image: visual?.assetUrl || undefined }) }} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: base }, { "@type": "ListItem", position: 2, name: "News", item: `${base}/news` }, { "@type": "ListItem", position: 3, name: article.title, item: url }] }) }} />
-  </main>;
+  </main><PublicFooter /></>;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -47,7 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { robots: { index: false, follow: false } };
 }
 
-const shell = { maxWidth: 860, margin: "0 auto", padding: "64px 20px", background: "#090b12", color: "#edf3f5", minHeight: "100vh" };
+const shell = { maxWidth: 860, margin: "0 auto", padding: "64px 20px", background: "#090b12", color: "#edf3f5", minHeight: "60vh" };
 const breadcrumb = { color: "#76f5e3", fontSize: 13 };
 const kicker = { marginTop: 40, color: "#d0aa59", letterSpacing: 2, fontSize: 12, fontWeight: 800 };
 const heading = { fontSize: "clamp(2rem,6vw,4rem)", lineHeight: 1.05 };
