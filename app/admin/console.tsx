@@ -47,8 +47,8 @@ type Item = {
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
 
-export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage, launchBatch }: {
-  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number }; launchBatch: { ready: number; correction: number; hold: number };
+export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage, launchBatch, health }: {
+  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number }; launchBatch: { ready: number; correction: number; hold: number }; health: { records: { kind: string; factCheckedAt?: string | null; approvedMedia: boolean; fallback: boolean; valid: boolean }[]; seoIssues: number; approvedSources: number; nextAction: string };
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -68,6 +68,11 @@ export default function Console({ role, articles, games, sources, runs, audits, 
   const action = (kind: string, actionName: string, id?: string, value?: string | boolean | number) => send({ kind, action: actionName, id, value });
   const sourceHost = (value?: string) => { try { return new URL(value || "").hostname; } catch { return value || "Source missing"; } };
   const reviewNext = articles.filter((article) => article.status === "review" && !article.title?.startsWith("Simulation:") && article.title && article.summary && article.summary.trim().split(/\s+/).length >= 120 && article.sourceUrl && article.factCheckedAt);
+  const [freshnessDays, setFreshnessDays] = useState(30);
+  const cutoff = Date.now() - freshnessDays * 86400000;
+  const currentFacts = health.records.filter((record) => record.factCheckedAt && Date.parse(record.factCheckedAt) >= cutoff).length;
+  const staleFacts = health.records.filter((record) => !record.factCheckedAt || Date.parse(record.factCheckedAt) < cutoff).length;
+  const fallbackRecords = health.records.filter((record) => record.fallback).length;
 
   return <main className="director-console">
     <header className="director-console-header">
@@ -86,6 +91,18 @@ export default function Console({ role, articles, games, sources, runs, audits, 
       <h2>Publishing overview</h2><p className="director-console-helper">Final publication remains Owner-only. Open the relevant review packet to see the exact readiness checks.</p>
       <div className="director-console-grid"><article className="director-console-card"><small>ARTICLES READY / IN REVIEW</small><h3>{overview.articles}</h3><p>Blocked until source, fact check, duplicate record, word count, and Owner decision all pass.</p>{reviewNext[0] && <button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(reviewNext[0].id)}`)}>Review next article</button>}</article><article className="director-console-card"><small>GAMES READY TO PUBLISH</small><h3>{overview.games}</h3><p>Open Game Management for exact field and source blockers.</p><a href="/admin/games">Open Game Management</a></article><article className="director-console-card"><small>CALENDAR ITEMS READY</small><h3>{overview.calendar}</h3><p>Only approved records with confirmed or estimated dates can proceed.</p><a href="/admin/games">Open calendar review</a></article><article className="director-console-card"><small>RECENT PUBLISHED RECORDS</small><h3>{overview.published}</h3><p>Published records are the only ones visible on public pages.</p><a href="/admin/quality">Run quality report</a></article></div>
     </section>
+
+    {role === "owner" && <section className="director-console-section">
+      <h2>Launch checklist</h2><p className="director-console-helper">Read-only D1 summary. It never fetches, schedules, changes records, or spends money.</p>
+      <div className="director-console-grid"><article className="director-console-card"><small>PUBLISHED COVERAGE</small><h3>{health.records.length}</h3><p>{health.records.filter((record) => record.kind === "article").length} articles · {health.records.filter((record) => record.kind === "game").length} games · {health.records.filter((record) => record.kind === "calendar").length} calendar items</p></article><article className="director-console-card"><small>READY FOR OWNER REVIEW</small><h3>{launchBatch.ready}</h3><p>{launchBatch.correction} need correction · {launchBatch.hold} intentionally held.</p></article><article className="director-console-card"><small>VISUAL COVERAGE</small><h3>{visualCoverage.approved} approved</h3><p>{fallbackRecords} published records use the labelled MyRPG fallback. {visualCoverage.pending} media items await review.</p></article><article className="director-console-card"><small>APPROVED SOURCES</small><h3>{health.approvedSources}</h3><p>Use Source Registry before entering any new private record.</p></article></div>
+      <div className="director-console-card" style={{ marginTop: 14 }}><small>NEXT SAFE MANUAL ACTION</small><p>{health.nextAction}</p></div>
+    </section>}
+
+    {role === "owner" && <section className="director-console-section">
+      <h2>Content health</h2><p className="director-console-helper">Counts use stored D1 dates only. Change the threshold to plan a manual fact-check pass; no record is changed.</p>
+      <label className="director-console-helper" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>Fact-check threshold <select value={freshnessDays} onChange={(event) => setFreshnessDays(Number(event.target.value))}><option value={30}>30 days</option><option value={60}>60 days</option><option value={90}>90 days</option><option value={180}>180 days</option></select></label>
+      <div className="director-console-grid"><article className="director-console-card"><small>WITHIN STORED THRESHOLD</small><h3>{currentFacts}</h3><p>Published records fact-checked within {freshnessDays} days.</p></article><article className="director-console-card"><small>NEEDS MANUAL REFRESH</small><h3>{staleFacts}</h3><p>Published records with a missing or older stored fact-check date.</p></article><article className="director-console-card"><small>APPROVED LEAD MEDIA</small><h3>{health.records.filter((record) => record.approvedMedia).length}</h3><p>{fallbackRecords} published records use the labelled fallback instead.</p></article><article className="director-console-card"><small>QUALITY FLAGS</small><h3>{health.seoIssues}</h3><p>Published records with missing source-backed public metadata. <a href="/admin/quality">Open Quality Report</a></p></article></div>
+    </section>}
 
     <section className="director-console-section">
       <h2>Launch batch</h2><p className="director-console-helper">Private games, calendar records, and article packets are grouped from their current source, freshness, and review state. “Ready” means ready for an Owner decision, never automatic publication.</p>
