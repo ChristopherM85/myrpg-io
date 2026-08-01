@@ -50,6 +50,13 @@
       "when": 1785534058157,
       "tag": "0006_brown_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785587752867,
+      "tag": "0008_rights_notes",
+      "breakpoints": true
     }
   ]
 }

@@ -30,12 +30,20 @@ type Item = {
   altText?: string;
   credit?: string;
   placement?: string;
+  articleId?: string;
+  gameId?: string;
+  assetUrl?: string;
+  r2Key?: string;
+  rightsNotes?: string;
+  width?: number;
+  height?: number;
+  caption?: string;
 };
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
 
-export default function Console({ role, articles, sources, runs, audits, media, settings, overview }: {
-  role: string; articles: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number };
+export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview }: {
+  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number };
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -112,7 +120,11 @@ export default function Console({ role, articles, sources, runs, audits, media, 
     </section>
 
     <section className={styles.section}>
-      <h2>Media Review</h2><p className={styles.helper}>Use only approved owner uploads or official game media. An Owner must approve display.</p>
+      <h2>Media Review</h2><p className={styles.helper}>Use only approved owner uploads or official game media. An Owner must approve display. Every item requires a rights note and a specific placement; fallback graphics remain labelled as non-gameplay.</p>
+      {role === "owner" && <form className="director-console-form" onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); const target = String(values.get("target") || ""); send({ kind: "media", action: "add", articleId: target.startsWith("article:") ? target.slice(8) : undefined, gameId: target.startsWith("game:") ? target.slice(5) : undefined, assetUrl: values.get("assetUrl"), r2Key: values.get("r2Key"), sourceUrl: values.get("sourceUrl"), sourceType: values.get("sourceType"), credit: values.get("credit"), rightsNotes: values.get("rightsNotes"), altText: values.get("altText"), caption: values.get("caption"), placement: values.get("placement"), width: Number(values.get("width")), height: Number(values.get("height")) }); }}>
+        <select name="target" required><option value="">Attach to…</option>{articles.map((article) => <option key={`article:${article.id}`} value={`article:${article.id}`}>Article: {article.title}</option>)}{games.map((game) => <option key={`game:${game.id}`} value={`game:${game.id}`}>Game: {game.title}</option>)}</select><select name="placement" required><option value="lead">Lead visual</option><option value="supporting">Supporting visual (article only)</option><option value="game-card">Game-card visual</option><option value="directory-card">Directory-card visual</option></select><select name="sourceType" required><option value="official_press_kit">Official press kit</option><option value="official_game_site">Official game site</option><option value="verified_store">Verified store artwork</option><option value="official_trailer">Official trailer artwork</option><option value="owner_upload">Owner R2 upload</option></select>
+        <input name="assetUrl" type="url" placeholder="Approved asset URL (official media only)" /><input name="r2Key" placeholder="R2 object key (owner upload only)" /><input name="sourceUrl" type="url" placeholder="Official source / press-kit URL" /><input name="credit" placeholder="Credit / copyright line" /><input name="rightsNotes" placeholder="Rights / reuse notes" required /><input name="altText" placeholder="Descriptive alt text" required /><input name="caption" placeholder="Visible caption (optional)" /><input name="width" type="number" min="1" defaultValue="1200" required /><input name="height" type="number" min="1" defaultValue="675" required /><button className="director-console-primary" disabled={busy}>Add media for Owner approval</button>
+      </form>}
       <div className={styles.grid}>{media.length ? media.map((item) => <article className={styles.card} key={item.id}><small>{item.status?.toUpperCase()} · {item.sourceType} · {item.placement}</small><h3>{item.altText}</h3><p>{item.credit || "No credit supplied"}</p><div className={styles.row}>{["approve", "reject", "archive", "restore"].map((name) => <button key={name} disabled={busy} onClick={() => action("media", name, item.id)}>{name}</button>)}</div></article>) : <div className={styles.empty}>No media is awaiting review.</div>}</div>
     </section>
 

@@ -13,12 +13,13 @@ async function loadArticle(slug: string) {
   const article = (await db.select().from(articles).where(eq(articles.slug, slug)).limit(1))[0];
   if (!article || article.status !== "published") return null;
   const visual = (await db.select().from(mediaAssets).where(and(eq(mediaAssets.articleId, article.id), eq(mediaAssets.placement, "lead"), eq(mediaAssets.status, "approved"))).limit(1))[0];
+  const supporting = await db.select().from(mediaAssets).where(and(eq(mediaAssets.articleId, article.id), eq(mediaAssets.placement, "supporting"), eq(mediaAssets.status, "approved"))).limit(2);
   const runs = await db.select().from(agentRuns).where(eq(agentRuns.itemId, article.id)).limit(8);
   const relationRun = runs.find((run) => run.outputJson?.includes("gameSlug"));
   let gameSlug = "";
   try { gameSlug = relationRun?.outputJson ? JSON.parse(relationRun.outputJson).gameSlug || "" : ""; } catch { /* A malformed private run cannot affect a public article. */ }
   const relatedGame = gameSlug ? (await db.select().from(games).where(eq(games.slug, gameSlug)).limit(1))[0] : null;
-  return { article, visual, relatedGame: relatedGame?.published ? relatedGame : null };
+  return { article, visual, supporting, relatedGame: relatedGame?.published ? relatedGame : null };
 }
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -26,7 +27,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   let record: Awaited<ReturnType<typeof loadArticle>> = null;
   try { record = await loadArticle(slug); } catch { return notFound(); }
   if (!record) return notFound();
-  const { article, visual, relatedGame } = record;
+  const { article, visual, supporting, relatedGame } = record;
   const url = `${base}/articles/${article.slug}`;
   return <><PublicHeader /><main style={shell}>
     <nav aria-label="Breadcrumb" style={breadcrumb}><a href="/">Home</a> / <a href="/news">News</a> / {article.title}</nav>
@@ -34,6 +35,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <h1 style={heading}>{article.title}</h1>
     <EditorialVisual title={article.title} label="Human-reviewed coverage" image={visual} />
     <p style={summary}>{article.summary}</p>
+    {supporting.map((asset) => <EditorialVisual key={asset.id} title={article.title} category="Supporting official media" label="Approved media" image={asset} eager={false} />)}
     <section style={notes}><h2>Source & Editorial Notes</h2><p>By Maya Chen, Signal Editor — a fictional AI editorial persona overseen by the MyRPG human director.</p><p>Published: {article.publishedAt} · Last fact-check: {article.factCheckedAt}</p><p>Source: <a href={article.sourceUrl} rel="noopener noreferrer" target="_blank">Official source</a></p><p>This is an AI-assisted, human-reviewed factual summary. MyRPG does not publish autonomous coverage.</p></section>
     {relatedGame && <section style={related}><h2>Related game</h2><p><a href={`/games/${relatedGame.slug}`}>{relatedGame.name}</a> — its human-approved profile is based on structured factual fields and official sources.</p></section>}
     <aside style={network}><small>FEATURED GAME FROM THE MYRPG NETWORK</small><p>MyMafia.io — Build an empire. Keep an alibi.</p><a href="https://mymafia.io?utm_source=myrpg.io&utm_medium=network_promo&utm_campaign=mymafia_beta" target="_blank" rel="noopener sponsored">Enter the city →</a></aside>
