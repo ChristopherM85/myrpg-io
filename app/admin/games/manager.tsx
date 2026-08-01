@@ -33,6 +33,7 @@ export default function GameManager({ role, games, sources, calendarItems }: { r
         <small>Release: {game.releaseDate || "Unconfirmed"} · {game.releaseDateConfidence || "unconfirmed"}</small><br />
         <small>Source: <a href={game.sourceUrl} target="_blank" rel="noopener noreferrer">{sourceName(game.sourceUrl)}</a> · checked {game.factCheckedAt?.slice(0, 10) || "missing"}</small>
         <div className="row">
+          <button type="button" onClick={() => window.location.assign(`/admin/preview/game/${encodeURIComponent(game.id)}`)}>Preview packet</button>
           <button onClick={() => send({ kind: "game", action: "approve", id: game.id })} disabled={role !== "owner"}>Approve</button>
           <button onClick={() => { const summary = prompt("Edit factual directory summary", game.directorySummary || ""); if (summary !== null) send({ kind: "game", action: "edit", id: game.id, value: summary }); }}>Edit summary</button>
           <button onClick={() => send({ kind: "game", action: "reject", id: game.id })}>Reject</button>

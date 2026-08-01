@@ -71,7 +71,7 @@ export default function Console({ role, articles, sources, runs, audits, media, 
       <p className="director-console-helper">Nothing can publish until you approve it.</p>
       <div className="director-console-grid">{articles.length ? articles.map((article) => <article className="director-console-card" key={article.id}>
         <small>{article.status?.toUpperCase() || "DRAFT"} · human review required</small><h3>{article.title}</h3><p>{article.summary}</p>
-        <div className="director-console-row">{["approve", "publish", "reject", "archive", "restore", "unpublish"].map((name) => <button key={name} disabled={busy} onClick={() => action("article", name, article.id)}>{name}</button>)}</div>
+        <div className="director-console-row"><button type="button" onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(article.id)}`)}>Preview packet</button>{["approve", "publish", "reject", "archive", "restore", "unpublish"].map((name) => <button key={name} disabled={busy} onClick={() => action("article", name, article.id)}>{name}</button>)}</div>
       </article>) : <div className="director-console-empty">No records yet. Create a deterministic simulation candidate to test the full review workflow.</div>}</div>
     </section>
 
