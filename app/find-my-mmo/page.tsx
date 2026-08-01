@@ -30,7 +30,7 @@ export default async function FindMyMmo({ searchParams }: { searchParams: Promis
   const eligible = search.availability === "upcoming" ? rows : rows.filter((game) => normal(game.status) === "live");
   const results = eligible.map((game) => ({ game, ...scoreGame(game, search) })).filter((result) => result.score > 0).sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name)).slice(0, 5);
   const hasCriteria = Object.entries(search).some(([key, value]) => key !== "availability" && Boolean(value));
-  return <><PublicHeader /><main style={{ maxWidth: 1100, margin: "0 auto", padding: "68px 24px 96px", minHeight: "60vh", fontFamily: "Arial, Helvetica, sans-serif" }}>
+  return <><PublicHeader /><main className="public-page discovery-page">
     <nav aria-label="Breadcrumb" style={{ fontSize: 12, color: "#929aad", marginBottom: 28 }}><a href="/" style={{ color: "#76f5e3" }}>Home</a> / <a href="/games" style={{ color: "#76f5e3" }}>Games</a> / Find My MMO</nav>
     <p style={{ color: "#76f5e3", fontSize: 11, fontWeight: 800, letterSpacing: 2 }}>MYRPG / DISCOVERY TOOL</p>
     <h1 style={{ fontSize: "clamp(42px,7vw,76px)", lineHeight: .94, letterSpacing: -3, margin: "14px 0 18px" }}>Find an MMO that fits your time.</h1>

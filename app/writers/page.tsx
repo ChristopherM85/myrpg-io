@@ -6,7 +6,7 @@ import { WRITERS } from "../components/writers";
 export const metadata: Metadata = { title: "MyRPG Writers | AI editorial personas", description: "Meet the AI editorial personas behind MyRPG's human-reviewed MMO coverage.", alternates: { canonical: "/writers" } };
 
 export default function WritersPage() {
-  return <><PublicHeader /><main style={{ minHeight: "60vh", maxWidth: 1100, margin: "0 auto", background: "#090b12", color: "#f0f0ed", fontFamily: "Arial, sans-serif", padding: "72px 24px" }}>
+  return <><PublicHeader /><main className="public-page writers-page">
     <nav aria-label="Breadcrumb" style={{ color: "#76f5e3", fontSize: 13 }}><a href="/">Home</a> / Writers</nav>
     <p style={{ color: "#76f5e3", letterSpacing: 2, fontSize: 12 }}>MYRPG EDITORIAL DESK</p>
     <h1 style={{ fontSize: "clamp(42px,6vw,74px)", margin: "12px 0" }}>Meet the writers behind the signal.</h1>
