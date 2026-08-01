@@ -10,6 +10,7 @@ const calendarFingerprint = (gameId: string, dateLabel: string, sourceUrl: strin
 export default async function QualityPage() {
   const user = await requireChatGPTUser("/admin/quality");
   const issues: string[] = [];
+  const visualCoverage: string[] = [];
   const technical = ["Robots policy protects /admin, /api, /preview, and /search.", "Drafts, previews, review packets, filters, and parameterized comparison pages are noindex through their route metadata.", "Published-only sitemap and RSS templates do not include private editorial records."];
   try {
     const db = getDb();
@@ -82,12 +83,16 @@ export default async function QualityPage() {
       if (assets.filter((asset) => asset.placement === "lead").length > 1) issues.push(`media target ${target}: more than one active lead visual`);
       if (assets.some((asset) => asset.articleId) && assets.filter((asset) => asset.placement === "supporting").length > 2) issues.push(`media target ${target}: more than two supporting article visuals`);
     }
+    const approvedLeadTargets = new Set(activeMedia.filter((asset) => asset.status === "approved" && asset.placement === "lead" && asset.assetUrl?.startsWith("/media/") && asset.altText.trim() && asset.width && asset.height).map((asset) => asset.articleId ? `article:${asset.articleId}` : `game:${asset.gameId}`));
+    for (const article of publishedArticles) visualCoverage.push(`${article.title}: ${approvedLeadTargets.has(`article:${article.id}`) ? "approved MyRPG-served lead visual is eligible for Open Graph" : "labelled MyRPG fallback is in use; no OG image is emitted until licensed media is approved"}`);
+    for (const game of allGames.filter((candidate) => candidate.published)) visualCoverage.push(`${game.name}: ${approvedLeadTargets.has(`game:${game.id}`) ? "approved MyRPG-served lead visual is eligible for Open Graph" : "labelled MyRPG fallback is in use; no OG image is emitted until licensed media is approved"}`);
   } catch { issues.push("D1 records are not available yet."); }
   return <main style={{ padding: 48, fontFamily: "Arial", background: "#090b12", color: "#edf3f5", minHeight: "100vh" }}>
     <p>MYRPG / OWNER TECHNICAL SEO</p>
     <h1>{issues.length ? `${issues.length} items need attention` : "All records pass the lightweight checks"}</h1>
     <p>Read-only report. Checks prioritize crawl eligibility, source approval, fact-check freshness, duplicate slugs, published metadata prerequisites, and the factual fields that power Find My MMO, MMO Radar, and Official Updates.</p>
     <section style={{ margin: "24px 0", padding: 20, border: "1px solid #2a3041", background: "#121622" }}><h2>Technical SEO status</h2><ul>{technical.map((item) => <li key={item}>{item}</li>)}</ul></section>
+    <section style={{ margin: "24px 0", padding: 20, border: "1px solid #2a3041", background: "#121622" }}><h2>Visual &amp; social metadata coverage</h2><p>Approved public visuals must use the MyRPG media route, include descriptive alt text and dimensions, and retain rights notes. Fallback graphics are labelled and intentionally omit Open Graph images.</p><ul>{visualCoverage.length ? visualCoverage.map((item) => <li key={item}>{item}</li>) : <li>No published article or game visual coverage is available yet.</li>}</ul></section>
     <ul>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
     <a href="/admin">Return to Director Console</a>
   </main>;
