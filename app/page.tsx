@@ -4,6 +4,9 @@ import { articles, calendarItems, games, mediaAssets, siteSettings } from "../db
 import { NetworkFeature, PublicFooter, PublicHeader } from "./components/PublicChrome";
 
 export const dynamic = "force-dynamic";
+export const metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   let news: any[] = []; let featured: any[] = []; let releases: any[] = []; let showNetwork = true; let articleVisuals = new Map<string, any>(); let gameVisuals = new Map<string, any>(); let editorialStatus = { articles: 0, games: 0, calendar: 0, latestFactCheck: null as string | null };

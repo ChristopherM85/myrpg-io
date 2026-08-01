@@ -53,6 +53,8 @@ type LaunchGate = {
   sitemap: { eligible: number; blocked: number };
   blockers: string[];
   routes: { route: string; label: string; visibility: string; detail: string }[];
+  checkedAt: string;
+  verificationNote: string;
 };
 
 export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage, launchBatch, health, launchGate }: {
@@ -111,6 +113,7 @@ export default function Console({ role, articles, games, sources, runs, audits, 
       <div className="director-console-grid"><article className="director-console-card"><small>PUBLISHED RECORDS</small><h3>{launchGate.published.articles + launchGate.published.games + launchGate.published.calendar}</h3><p>{launchGate.published.articles} articles · {launchGate.published.games} games · {launchGate.published.calendar} calendar items</p></article><article className="director-console-card"><small>VISUAL COVERAGE</small><h3>{visualCoverage.approved} approved</h3><p>{visualCoverage.fallback} labelled fallbacks · {visualCoverage.pending} awaiting review</p></article><article className="director-console-card"><small>FACT-CHECK FRESHNESS</small><h3>{launchGate.freshness.current}</h3><p>{launchGate.freshness.stale} need manual refresh at the {launchGate.freshness.thresholdDays}-day threshold.</p></article><article className="director-console-card"><small>SITEMAP ELIGIBILITY</small><h3>{launchGate.sitemap.eligible}</h3><p>{launchGate.sitemap.blocked} published records lack data needed for public-page eligibility.</p></article></div>
       <div className="director-console-card" style={{ marginTop: 14 }}><small>PUBLIC-ROUTE REGRESSION CHECKLIST</small><div className="director-console-grid" style={{ marginTop: 12 }}>{launchGate.routes.map((route) => <div key={route.route}><strong>{route.label}</strong><p><code>{route.route}</code> · {route.visibility}</p><p>{route.detail}</p></div>)}</div></div>
       <div className="director-console-card" style={{ marginTop: 14 }}><small>REMAINING LAUNCH BLOCKERS</small>{launchGate.blockers.length ? <ul>{launchGate.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : <p>No D1 launch-gate blocker is currently detected. Complete a fresh public-browser review before announcing the site.</p>}</div>
+      <div className="director-console-card" style={{ marginTop: 14 }}><small>PRE-LAUNCH QA RESULT</small><p>Structural route check generated {new Date(launchGate.checkedAt).toLocaleString()}.</p><p>{launchGate.verificationNote}</p></div>
     </section>}
 
     {role === "owner" && <section className="director-console-section">
