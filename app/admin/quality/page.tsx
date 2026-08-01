@@ -1,6 +1,6 @@
 import { requireChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { articles, games, mediaAssets, sourceCache, sources, users } from "../../../db/schema";
+import { agentRuns, articles, games, mediaAssets, sourceCache, sources, users } from "../../../db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,8 @@ export default async function QualityPage() {
     const me = (await db.select().from(users).where(eq(users.email, user.email)).limit(1))[0];
     if (me?.role !== "owner") return <main><h1>Owner access required</h1></main>;
     const publishedArticles = await db.select().from(articles).where(eq(articles.status, "published"));
+    const articleRuns = await db.select().from(agentRuns);
+    const publishedGameSlugs = new Set((await db.select().from(games).where(eq(games.published, true))).map((game) => game.slug));
     const approvedDomains = new Set((await db.select().from(sources)).filter((source) => source.approved).map((source) => source.domain.toLowerCase()));
     const articleSlugs = new Set<string>();
     for (const article of publishedArticles) {
@@ -23,6 +25,10 @@ export default async function QualityPage() {
       if (article.factCheckedAt && Date.now() - Date.parse(article.factCheckedAt) > 1000 * 60 * 60 * 24 * 180) issues.push(`${article.id}: fact check is older than 180 days`);
       if (article.sourceUrl) { try { const domain = new URL(article.sourceUrl).hostname.toLowerCase().replace(/^www\./, ""); if (!approvedDomains.has(domain)) issues.push(`${article.id}: source domain is not approved`); } catch { issues.push(`${article.id}: source URL is invalid`); } }
       if (!article.contentFingerprint || !(await db.select().from(sourceCache).where(eq(sourceCache.contentHash, article.contentFingerprint)).limit(1))[0]) issues.push(`${article.id}: duplicate-check record is missing`);
+      const intake = articleRuns.filter((run) => run.itemId === article.id && run.outputJson).map((run) => { try { return JSON.parse(run.outputJson!); } catch { return null; } }).find(Boolean);
+      if (!intake?.sourceDate) issues.push(`${article.id}: Official Updates source date is missing`);
+      if (!article.summary.trim()) issues.push(`${article.id}: visible gamer takeaway is missing`);
+      if (intake?.gameSlug && !publishedGameSlugs.has(intake.gameSlug)) issues.push(`${article.id}: related published game is missing`);
       if (articleSlugs.has(article.slug)) issues.push(`${article.id}: duplicate slug`);
       articleSlugs.add(article.slug);
     }
