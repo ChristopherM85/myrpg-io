@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { agentRuns, articles, games, mediaAssets } from "../../../db/schema";
 import { EditorialVisual } from "../../components/EditorialVisual";
-import { publicEditorialAssetUrl } from "../../components/editorial-media";
+import { publicEditorialAssetUrl, publicEditorialImage } from "../../components/editorial-media";
 import { PublicFooter, PublicHeader } from "../../components/PublicChrome";
 import { WriterPortrait } from "../../components/WriterPortrait";
 import { MAYA } from "../../components/writers";
@@ -42,7 +42,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/news">News</a> / {article.title}</nav>
     <p className="article-kicker">AI-ASSISTED · HUMAN-REVIEWED</p>
     <h1>{article.title}</h1>
-    <EditorialVisual title={article.title} label="Human-reviewed coverage" image={visual} />
+    <EditorialVisual title={article.title} label="Human-reviewed coverage" image={visual} themeKey={article.editorialGraphic} />
     <p className="article-summary">{article.summary}</p>
     {supporting.map((asset) => <EditorialVisual key={asset.id} title={article.title} category="Supporting official media" label="Approved media" image={asset} eager={false} />)}
     <section className="article-notes"><div className="article-notes-heading"><p>VERIFIED COVERAGE</p><h2>Source &amp; editorial notes</h2></div><a href={`/writers#${MAYA.slug}`} className="article-author"><div className="article-author-portrait"><WriterPortrait writer={MAYA} compact /></div><span><strong>{MAYA.name}</strong><b>{MAYA.title}</b><small>MyRPG editorial persona · AI-assisted, human-reviewed</small></span><span className="article-author-arrow" aria-hidden="true">→</span></a><dl className="article-fact-row"><div><dt>Published</dt><dd><time dateTime={article.publishedAt || undefined}>{displayDate(article.publishedAt)}</time></dd></div><div><dt>Last fact-check</dt><dd><time dateTime={article.factCheckedAt || undefined}>{displayDate(article.factCheckedAt)}</time></dd></div><div><dt>Primary source</dt><dd><a href={article.sourceUrl} rel="noopener noreferrer" target="_blank">Official source <span aria-hidden="true">↗</span></a></dd></div></dl><p className="article-transparency">This is an AI-assisted, human-reviewed factual summary. MyRPG does not publish autonomous coverage.</p></section>
@@ -56,6 +56,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  try { const record = await loadArticle(slug); if (record) { const image = publicEditorialAssetUrl(record.visual); return { title: `${record.article.title} | MyRPG.IO`, description: record.article.summary.slice(0, 155), alternates: { canonical: `${base}/articles/${slug}` }, robots: { index: true, follow: true }, openGraph: { title: record.article.title, description: record.article.summary.slice(0, 155), url: `${base}/articles/${slug}`, images: image ? [`${base}${image}`] : undefined }, twitter: { card: image ? "summary_large_image" : "summary", images: image ? [`${base}${image}`] : undefined } }; } } catch { /* private/unavailable records remain noindex */ }
+  try { const record = await loadArticle(slug); if (record) { const image = publicEditorialImage(record.visual, record.article.editorialGraphic); return { title: `${record.article.title} | MyRPG.IO`, description: record.article.summary.slice(0, 155), alternates: { canonical: `${base}/articles/${slug}` }, robots: { index: true, follow: true }, openGraph: { title: record.article.title, description: record.article.summary.slice(0, 155), url: `${base}/articles/${slug}`, images: [`${base}${image}`] }, twitter: { card: "summary_large_image", images: [`${base}${image}`] } }; } } catch { /* private/unavailable records remain noindex */ }
   return { robots: { index: false, follow: false } };
 }

@@ -68,7 +68,7 @@ export default async function OfficialUpdates() {
         <p style={{ ...eyebrow, marginTop: 0 }}>PUBLISHED {displayDate(article.publishedAt)}</p>
         <h3 style={h3}><a href={`/articles/${article.slug}`}>{article.title}</a></h3>
         {related && <p style={muted}><a href={`/games/${related.slug}`}>Related game: {related.name}</a></p>}
-        <EditorialVisual title={article.title} category="Official update" label="Human-reviewed coverage" image={visual} eager={false} />
+        <EditorialVisual title={article.title} category="Official update" label="Human-reviewed coverage" image={visual} themeKey={article.editorialGraphic} eager={false} />
         <p style={muted}>{article.summary}</p>
         <dl style={facts}>
           <div><dt>Writer</dt><dd><a href={`/writers#${MAYA.slug}`}>{MAYA.name} · {MAYA.title}</a></dd></div>

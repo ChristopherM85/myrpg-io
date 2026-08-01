@@ -49,6 +49,18 @@ export async function POST(request: Request) {
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
   const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string };
   const { db, email, role } = identity; const kind = body.kind ?? "";
+  if (kind === "editorial_graphic") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can select a public MyRPG editorial graphic." }, { status: 403 });
+    const graphic = String(body.value || "");
+    if (!body.id || !["neutral", "fantasy", "science", "anime", "historical", "strategy"].includes(graphic)) return Response.json({ error: "Choose a valid MyRPG editorial graphic." }, { status: 400 });
+    const target = body.action === "article" ? articles : body.action === "game" ? games : null;
+    if (!target) return Response.json({ error: "Choose an article or game record." }, { status: 400 });
+    const record = await db.select().from(target).where(eq(target.id, body.id)).limit(1);
+    if (!record[0] || (body.action === "article" ? record[0].status !== "published" : !record[0].published)) return Response.json({ error: "Editorial graphics can only be selected for published records." }, { status: 409 });
+    await db.update(target).set({ editorialGraphic: graphic, updatedAt: stamp() }).where(eq(target.id, body.id));
+    await audit(db, email, "editorial_graphic_selected", body.action, body.id, { graphic, rights: "Original MyRPG editorial artwork; not gameplay" });
+    return Response.json({ ok: true });
+  }
   if (!allowed(role, kind)) return Response.json({ error: "Owner permission required" }, { status: 403 });
   const time = stamp();
   if(kind==="game"){
