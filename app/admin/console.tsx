@@ -34,8 +34,8 @@ type Item = {
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
 
-export default function Console({ role, articles, sources, runs, audits, media, settings }: {
-  role: string; articles: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings;
+export default function Console({ role, articles, sources, runs, audits, media, settings, overview }: {
+  role: string; articles: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number };
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -68,6 +68,11 @@ export default function Console({ role, articles, sources, runs, audits, media, 
       </div>
       {message && <p className="director-console-message">{message}</p>}
     </header>
+
+    <section className="director-console-section">
+      <h2>Publishing overview</h2><p className="director-console-helper">Final publication remains Owner-only. Open the relevant review packet to see the exact readiness checks.</p>
+      <div className="director-console-grid"><article className="director-console-card"><small>ARTICLES READY / IN REVIEW</small><h3>{overview.articles}</h3><p>Blocked until source, fact check, duplicate record, word count, and Owner decision all pass.</p></article><article className="director-console-card"><small>GAMES READY TO PUBLISH</small><h3>{overview.games}</h3><p>Open Game Management for exact field and source blockers.</p></article><article className="director-console-card"><small>CALENDAR ITEMS READY</small><h3>{overview.calendar}</h3><p>Only approved records with confirmed or estimated dates can proceed.</p></article><article className="director-console-card"><small>RECENT PUBLISHED RECORDS</small><h3>{overview.published}</h3><p>Published records are the only ones visible on public pages.</p></article></div>
+    </section>
 
     <section className="director-console-section">
       <h2>Official Announcement Intake</h2>

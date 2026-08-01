@@ -1,0 +1,3 @@
+import { PublicFooter, PublicHeader } from "../components/PublicChrome";
+export const metadata={title:"AI Transparency | MyRPG.IO",description:"How MyRPG uses AI assistance with human editorial review.",alternates:{canonical:"https://myrpg.io/ai-transparency"}};
+export default function Page(){return <><PublicHeader/><main style={shell}><p>MYRPG / TRANSPARENCY</p><h1>AI transparency</h1><p>MyRPG may use AI-assisted editorial personas and structured drafting tools, but public content remains human-reviewed. Live agent generation is disabled by default, and no agent can publish directly.</p></main><PublicFooter/></>};const shell={maxWidth:820,margin:"0 auto",padding:"72px 24px",minHeight:"60vh",lineHeight:1.7,color:"#d5dbe7",background:"#090b12"};

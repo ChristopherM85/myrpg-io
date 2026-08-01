@@ -1,0 +1,3 @@
+import { PublicFooter, PublicHeader } from "../components/PublicChrome";
+export const metadata={title:"Privacy | MyRPG.IO",description:"MyRPG privacy information.",alternates:{canonical:"https://myrpg.io/privacy"}};
+export default function Page(){return <><PublicHeader/><main style={shell}><p>MYRPG / PRIVACY</p><h1>Privacy</h1><p>MyRPG does not require public visitor accounts. Administrative access is protected separately. Network-promotion click tracking is aggregate-only and does not collect visitor identity information.</p></main><PublicFooter/></>};const shell={maxWidth:820,margin:"0 auto",padding:"72px 24px",minHeight:"60vh",lineHeight:1.7,color:"#d5dbe7",background:"#090b12"};
