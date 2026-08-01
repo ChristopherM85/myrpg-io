@@ -43,8 +43,8 @@ type Item = {
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
 
-export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview }: {
-  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number };
+export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage }: {
+  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number };
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -129,6 +129,11 @@ export default function Console({ role, articles, games, sources, runs, audits, 
         <input name="assetUrl" type="url" placeholder="Approved asset URL (official media only)" /><input name="r2Key" placeholder="R2 object key (owner upload only)" /><input name="sourceUrl" type="url" placeholder="Official source / press-kit URL" /><input name="credit" placeholder="Credit / copyright line" /><input name="rightsNotes" placeholder="Rights / reuse notes" required /><input name="altText" placeholder="Descriptive alt text" required /><input name="caption" placeholder="Visible caption (optional)" /><input name="width" type="number" min="1" defaultValue="1200" required /><input name="height" type="number" min="1" defaultValue="675" required /><button className="director-console-primary" disabled={busy}>Add media for Owner approval</button>
       </form>}
       <div className={styles.grid}>{media.length ? media.map((item) => <article className={styles.card} key={item.id}><small>{item.status?.toUpperCase()} · {item.sourceType} · {item.placement}</small><h3>{item.altText}</h3><p>{item.credit || "No credit supplied"}</p><div className={styles.row}>{["approve", "reject", "archive", "restore"].map((name) => <button key={name} disabled={busy} onClick={() => action("media", name, item.id)}>{name}</button>)}</div></article>) : <div className={styles.empty}>No media is awaiting review.</div>}</div>
+    </section>
+
+    <section className={styles.section}>
+      <h2>Visual coverage</h2><p className={styles.helper}>Published records use an approved lead visual when one is available; otherwise MyRPG shows the labelled editorial fallback instead of unverified imagery.</p>
+      <div className={styles.grid}><article className={styles.card}><small>APPROVED LEAD VISUALS</small><h3>{visualCoverage.approved}</h3><p>Published articles or games with an approved lead visual.</p></article><article className={styles.card}><small>FALLBACK IN USE</small><h3>{visualCoverage.fallback}</h3><p>Published records using the MyRPG editorial graphic — not gameplay.</p></article><article className={styles.card}><small>PENDING REVIEW</small><h3>{visualCoverage.pending}</h3><p>Attached media waiting for an Owner decision.</p></article><article className={styles.card}><small>MISSING METADATA</small><h3>{visualCoverage.metadata}</h3><p>Media records needing alt text, rights notes, dimensions, or a target.</p><a href="/admin/quality">Open Quality Report</a></article></div>
     </section>
 
     <section className={styles.section}>
