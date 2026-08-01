@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function ArticlePreviewActions({ id, summary }: { id: string; summary: string }) {
+export default function ArticlePreviewActions({ id, summary, ready, publicUrl }: { id: string; summary: string; ready: boolean; publicUrl: string }) {
   const [draft, setDraft] = useState(summary);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -15,8 +15,19 @@ export default function ArticlePreviewActions({ id, summary }: { id: string; sum
     } catch { setMessage("Unable to save the draft. Please try again."); }
     finally { setSaving(false); }
   }
+  async function publish() {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "article", action: "publish", id }) });
+      const result = await response.json();
+      setMessage(result.error || "Article published. Opening the public article…");
+      if (result.ok) setTimeout(() => location.assign(publicUrl), 700);
+    } catch { setMessage("Unable to publish. Please refresh and try again."); }
+    finally { setSaving(false); }
+  }
   return <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "28px 0" }}>
     <a href="/admin#review-queue" style={linkStyle}>Back to Review Queue</a>
+    {ready && <button type="button" disabled={saving} onClick={publish} style={buttonStyle}>Confirm and publish</button>}
     <details style={{ width: "100%", marginTop: 8 }}><summary style={{ cursor: "pointer", color: "#76f5e3", fontWeight: 700 }}>Edit draft</summary>
       <label style={{ display: "block", marginTop: 14, color: "#c4cad8" }}>Draft summary
         <textarea value={draft} onChange={(event) => setDraft(event.target.value)} rows={8} style={textareaStyle} />
