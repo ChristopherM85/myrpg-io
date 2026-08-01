@@ -1,9 +1,11 @@
 import { requireChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { agentRuns, articles, games, mediaAssets, sourceCache, sources, users } from "../../../db/schema";
+import { agentRuns, articles, calendarItems, games, mediaAssets, sourceCache, sources, users } from "../../../db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
+const normalized = (value?: string | null) => { try { const url = new URL(value || ""); url.hash = ""; url.hostname = url.hostname.toLowerCase().replace(/^www\./, ""); for (const key of [...url.searchParams.keys()]) if (key.startsWith("utm_")) url.searchParams.delete(key); return url.toString().replace(/\/$/, ""); } catch { return ""; } };
+const calendarFingerprint = (gameId: string, dateLabel: string, sourceUrl: string) => `${gameId}|${dateLabel.trim().toLowerCase()}|${sourceUrl}`;
 
 export default async function QualityPage() {
   const user = await requireChatGPTUser("/admin/quality");
@@ -35,8 +37,8 @@ export default async function QualityPage() {
       articleSlugs.add(article.slug);
     }
     technical.unshift(`${publishedArticles.length} published article route${publishedArticles.length === 1 ? "" : "s"} are eligible for sitemap and RSS output.`);
-    const gameSlugs = new Set<string>();
-    for (const game of await db.select().from(games)) {
+    const gameSlugs = new Set<string>(); const gameSourceUrls = new Map<string, string>(); const allGames = await db.select().from(games);
+    for (const game of allGames) {
       const prefix = game.published ? game.name : `${game.name} (review candidate)`;
       if (game.published && !game.status) issues.push(`${prefix}: MMO Radar status is missing`);
       if (game.published && !game.platforms) issues.push(`${prefix}: MMO Radar platform field is missing`);
@@ -49,7 +51,17 @@ export default async function QualityPage() {
       if (game.sourceUrl) { try { const domain = new URL(game.sourceUrl).hostname.toLowerCase().replace(/^www\./, ""); if (!approvedDomains.has(domain)) issues.push(`${prefix}: source domain is not approved`); } catch { issues.push(`${prefix}: source URL is invalid`); } }
       if (game.factCheckedAt && Date.now() - Date.parse(game.factCheckedAt) > 1000 * 60 * 60 * 24 * 30) issues.push(`${prefix}: fact check is older than 30 days`);
       if (gameSlugs.has(game.slug)) issues.push(`${prefix}: duplicate slug`); gameSlugs.add(game.slug);
+      const normalizedSource = normalized(game.sourceUrl); if (!normalizedSource) issues.push(`${prefix}: normalized official source URL is missing or invalid`); else if (gameSourceUrls.has(normalizedSource)) issues.push(`${prefix}: duplicate normalized source URL also used by ${gameSourceUrls.get(normalizedSource)}`); else gameSourceUrls.set(normalizedSource, game.name);
       if (!game.published && game.reviewStatus !== "approved") issues.push(`${prefix}: Owner review decision is still required`);
+    }
+    const calendarFingerprints = new Map<string, string>();
+    for (const item of await db.select().from(calendarItems)) {
+      const prefix = `${item.title} (calendar ${item.published ? "published" : "review candidate"})`; const normalizedSource = normalized(item.sourceUrl);
+      if (!normalizedSource) issues.push(`${prefix}: normalized official source URL is missing or invalid`);
+      else { try { const domain = new URL(normalizedSource).hostname; if (!approvedDomains.has(domain)) issues.push(`${prefix}: source domain is not approved`); } catch { issues.push(`${prefix}: source URL is invalid`); } }
+      if (!item.factCheckedAt) issues.push(`${prefix}: fact-check date is missing`); else if (Date.now() - Date.parse(item.factCheckedAt) > 1000 * 60 * 60 * 24 * 30) issues.push(`${prefix}: fact check is older than 30 days`);
+      const fingerprint = calendarFingerprint(item.gameId, item.dateLabel, normalizedSource); if (calendarFingerprints.has(fingerprint)) issues.push(`${prefix}: duplicate calendar fingerprint also used by ${calendarFingerprints.get(fingerprint)}`); else calendarFingerprints.set(fingerprint, item.title);
+      if (!item.published && item.reviewStatus !== "approved") issues.push(`${prefix}: Owner review decision is still required`);
     }
     technical.unshift(`${publishedGameSlugs.size} published game profile route${publishedGameSlugs.size === 1 ? "" : "s"} are eligible for sitemap output.`);
     const media = await db.select().from(mediaAssets);
