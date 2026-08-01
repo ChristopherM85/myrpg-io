@@ -39,6 +39,10 @@ type Item = {
   width?: number;
   height?: number;
   caption?: string;
+  sourceDate?: string;
+  relatedGame?: string;
+  recommendation?: string;
+  gamerTakeaway?: string;
 };
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
@@ -105,7 +109,7 @@ export default function Console({ role, articles, games, sources, runs, audits, 
     <section className="director-console-section">
       <h2>Review next: articles</h2>
       <p className="director-console-helper">Only complete, current, source-approved article packets appear here. Recommendation: confirm, then approve or hold.</p>
-      <div className="director-console-grid">{reviewNext.length ? reviewNext.map((article) => <article className="director-console-card" key={article.id}><small>READY FOR OWNER REVIEW · {sourceHost(article.sourceUrl)}</small><h3>{article.title}</h3><p>Source, 120–180 word draft, and fact-check date are present. Media will use the labelled MyRPG fallback unless separately approved.</p><div className="director-console-row"><button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(article.id)}`)}>Open source-first packet</button><button disabled={busy} onClick={() => action("article", "approve", article.id)}>Owner approve</button><button disabled={busy} onClick={() => action("article", "archive", article.id)}>Hold / archive</button></div></article>) : <div className="director-console-empty">No complete official announcement packets are ready. Create one only from a recent approved official announcement.</div>}</div>
+      <div className="director-console-grid">{reviewNext.length ? reviewNext.map((article) => <article className="director-console-card" key={article.id}><small>{(article.recommendation || "edit").toUpperCase()} · {sourceHost(article.sourceUrl)}</small><h3>{article.title}</h3><p>Related game: {article.relatedGame || "Not recorded"} · Source date: {article.sourceDate?.slice(0, 10) || "Missing"}</p><p>Gamer takeaway: {article.gamerTakeaway}</p><p>Source, 120–180 word draft, and fact-check date are present. Media will use the labelled MyRPG fallback unless separately approved.</p><div className="director-console-row"><button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(article.id)}`)}>Open source-first packet</button><button disabled={busy} onClick={() => action("article", "approve", article.id)}>Owner approve</button><button disabled={busy} onClick={() => action("article", "archive", article.id)}>Hold / archive</button></div></article>) : <div className="director-console-empty">No complete official announcement packets are ready. Create one only from a recent approved official announcement.</div>}</div>
     </section>
 
     <section className="director-console-section">
