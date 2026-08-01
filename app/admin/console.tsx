@@ -47,8 +47,16 @@ type Item = {
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
 
-export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage, launchBatch, health }: {
-  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number }; launchBatch: { ready: number; correction: number; hold: number }; health: { records: { kind: string; factCheckedAt?: string | null; approvedMedia: boolean; fallback: boolean; valid: boolean }[]; seoIssues: number; approvedSources: number; nextAction: string; seoItems: { name: string; kind: string; issues: string[] }[] };
+type LaunchGate = {
+  published: { articles: number; games: number; calendar: number };
+  freshness: { current: number; stale: number; thresholdDays: number };
+  sitemap: { eligible: number; blocked: number };
+  blockers: string[];
+  routes: { route: string; label: string; visibility: string; detail: string }[];
+};
+
+export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage, launchBatch, health, launchGate }: {
+  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number }; launchBatch: { ready: number; correction: number; hold: number }; health: { records: { kind: string; factCheckedAt?: string | null; approvedMedia: boolean; fallback: boolean; valid: boolean }[]; seoIssues: number; approvedSources: number; nextAction: string; seoItems: { name: string; kind: string; issues: string[] }[] }; launchGate: LaunchGate;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -96,6 +104,13 @@ export default function Console({ role, articles, games, sources, runs, audits, 
       <h2>Launch checklist</h2><p className="director-console-helper">Read-only D1 summary. It never fetches, schedules, changes records, or spends money.</p>
       <div className="director-console-grid"><article className="director-console-card"><small>PUBLISHED COVERAGE</small><h3>{health.records.length}</h3><p>{health.records.filter((record) => record.kind === "article").length} articles · {health.records.filter((record) => record.kind === "game").length} games · {health.records.filter((record) => record.kind === "calendar").length} calendar items</p></article><article className="director-console-card"><small>READY FOR OWNER REVIEW</small><h3>{launchBatch.ready}</h3><p>{launchBatch.correction} need correction · {launchBatch.hold} intentionally held.</p></article><article className="director-console-card"><small>VISUAL COVERAGE</small><h3>{visualCoverage.approved} approved</h3><p>{fallbackRecords} published records use the labelled MyRPG fallback. {visualCoverage.pending} media items await review.</p></article><article className="director-console-card"><small>APPROVED SOURCES</small><h3>{health.approvedSources}</h3><p>Use Source Registry before entering any new private record.</p></article></div>
       <div className="director-console-card" style={{ marginTop: 14 }}><small>NEXT SAFE MANUAL ACTION</small><p>{health.nextAction}</p></div>
+    </section>}
+
+    {role === "owner" && <section className="director-console-section">
+      <h2>Public launch gate</h2><p className="director-console-helper">A read-only release check using stored D1 records and the public route rules. It does not fetch pages, change content, or spend money.</p>
+      <div className="director-console-grid"><article className="director-console-card"><small>PUBLISHED RECORDS</small><h3>{launchGate.published.articles + launchGate.published.games + launchGate.published.calendar}</h3><p>{launchGate.published.articles} articles · {launchGate.published.games} games · {launchGate.published.calendar} calendar items</p></article><article className="director-console-card"><small>VISUAL COVERAGE</small><h3>{visualCoverage.approved} approved</h3><p>{visualCoverage.fallback} labelled fallbacks · {visualCoverage.pending} awaiting review</p></article><article className="director-console-card"><small>FACT-CHECK FRESHNESS</small><h3>{launchGate.freshness.current}</h3><p>{launchGate.freshness.stale} need manual refresh at the {launchGate.freshness.thresholdDays}-day threshold.</p></article><article className="director-console-card"><small>SITEMAP ELIGIBILITY</small><h3>{launchGate.sitemap.eligible}</h3><p>{launchGate.sitemap.blocked} published records lack data needed for public-page eligibility.</p></article></div>
+      <div className="director-console-card" style={{ marginTop: 14 }}><small>PUBLIC-ROUTE REGRESSION CHECKLIST</small><div className="director-console-grid" style={{ marginTop: 12 }}>{launchGate.routes.map((route) => <div key={route.route}><strong>{route.label}</strong><p><code>{route.route}</code> · {route.visibility}</p><p>{route.detail}</p></div>)}</div></div>
+      <div className="director-console-card" style={{ marginTop: 14 }}><small>REMAINING LAUNCH BLOCKERS</small>{launchGate.blockers.length ? <ul>{launchGate.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul> : <p>No D1 launch-gate blocker is currently detected. Complete a fresh public-browser review before announcing the site.</p>}</div>
     </section>}
 
     {role === "owner" && <section className="director-console-section">
