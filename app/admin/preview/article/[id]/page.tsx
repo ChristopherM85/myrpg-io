@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { requireChatGPTUser } from "../../../../chatgpt-auth";
 import { getDb } from "../../../../../db";
-import { agentRuns, articles, auditEvents, mediaAssets, reviewDecisions, sources, users } from "../../../../../db/schema";
+import { agentRuns, articles, auditEvents, mediaAssets, reviewDecisions, sourceCache, sources, users } from "../../../../../db/schema";
 import ArticlePreviewActions from "./preview-actions";
 
 export const dynamic = "force-dynamic";
@@ -22,28 +22,32 @@ export default async function ArticlePreviewPage({ params }: { params: Promise<{
     const article = (await db.select().from(articles).where(eq(articles.id, id)).limit(1))[0];
     if (article) {
       const host = new URL(article.sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
-      const [source, runs, decisions, audits, visual] = await Promise.all([
+      const [source, runs, decisions, audits, visual, cache] = await Promise.all([
         db.select().from(sources).where(eq(sources.domain, host)).limit(1),
         db.select().from(agentRuns).where(eq(agentRuns.itemId, article.id)).orderBy(desc(agentRuns.createdAt)),
         db.select().from(reviewDecisions).where(eq(reviewDecisions.articleId, article.id)).orderBy(desc(reviewDecisions.createdAt)),
         db.select().from(auditEvents).where(and(eq(auditEvents.entityType, "article"), eq(auditEvents.entityId, article.id))).orderBy(desc(auditEvents.createdAt)),
         db.select().from(mediaAssets).where(and(eq(mediaAssets.articleId, article.id), eq(mediaAssets.placement, "lead"), eq(mediaAssets.status, "approved"))).limit(1),
+        db.select().from(sourceCache).where(eq(sourceCache.contentHash, article.contentFingerprint || "")).limit(1),
       ]);
-      packet = { article, source: source[0], runs, decisions, audits, visual: visual[0] };
+      packet = { article, source: source[0], runs, decisions, audits, visual: visual[0], cache: cache[0] };
     }
   } catch { packet = null; }
   if (!packet) return <PrivateState title="Preview unavailable" message="This draft does not exist, is no longer available, or cannot be read by this Owner account." />;
-  const { article, source, runs, decisions, audits, visual } = packet;
+  const { article, source, runs, decisions, audits, visual, cache } = packet;
   const planned = runs.reduce((sum: number, run: any) => sum + (run.plannedCostCents || 0), 0);
   const actual = runs.reduce((sum: number, run: any) => sum + (run.actualCostCents || 0), 0);
   const intakeRun = runs.find((run: any) => run.agent === "director_review" && run.outputJson);
   let intake: any = null; try { intake = intakeRun ? JSON.parse(intakeRun.outputJson) : null; } catch { intake = null; }
-  const blockers = [!source?.approved && "Official source is not approved", !article.factCheckedAt && "Fact-check date is missing", article.status !== "review" && "Draft is not in human review", !article.summary?.trim() && "Draft content is missing", !visual && "No approved lead visual — branded MyRPG fallback will be used"].filter((item): item is string => Boolean(item));
+  const wordCount = article.summary?.trim().split(/\s+/).filter(Boolean).length || 0;
+  const fresh = article.factCheckedAt && Date.now() - new Date(article.factCheckedAt).valueOf() <= 180 * 86400000;
+  const ownerApproved = decisions.some((decision: any) => decision.decision === "approve");
+  const blockers = [!source?.approved && "Official source is not approved", !cache && "Duplicate-check record is missing", !article.factCheckedAt && "Fact-check date is missing", !fresh && "Fact-check date is stale", wordCount < 120 || wordCount > 180 ? "Draft must be 120–180 words" : false, article.status !== "review" && "Draft is not in human review", !ownerApproved && "Explicit Owner review decision is required"].filter((item): item is string => Boolean(item));
   return <main style={shell}>
     <p style={kicker}>OWNER-ONLY PREVIEW · NOINDEX</p><h1 style={heading}>{article.title}</h1>
     <p style={muted}>Slug: <code>{article.slug}</code> · Status: <strong>{pretty(article.status)}</strong> · Writer: Maya Chen, Signal Editor (AI persona; human-reviewed)</p>
     <ArticlePreviewActions id={article.id} summary={article.summary} />
-    <Section title="Publication readiness"><ul>{blockers.length ? blockers.map((blocker: string) => <li key={blocker}>{blocker}</li>) : <li>All current readiness checks pass.</li>}</ul></Section>
+    <Section title="Owner publication checklist"><ul>{blockers.length ? blockers.map((blocker: string) => <li key={blocker}>{blocker}</li>) : <li>All required checks pass. The Owner may publish manually.</li>}<li>Lead visual: {visual ? "approved official/owner media" : "labelled MyRPG editorial fallback will be used"}</li></ul></Section>
     <Section title="Draft"><p style={body}>{article.summary}</p></Section>
     <Section title="Sources & fact check"><p><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" style={accent}>{article.sourceUrl}</a></p><p style={muted}>Approved source: {source?.approved ? "Yes" : "No"} · Confidence: {article.confidence}% · Fact-checked: {article.factCheckedAt || "Missing"}</p>{intake && <div style={card}><strong>Official announcement intake</strong><p style={muted}>Related published game: {intake.gameName || "Not recorded"} · Source date: {intake.sourceDate || "Missing"}</p><p style={muted}>Normalized URL: {intake.normalizedUrl || article.sourceUrl} · Duplicate result: {intake.duplicate || "Not recorded"} · Validation: {intake.validation || "Not recorded"}</p><p style={muted}>Recommendation: {intake.recommendation || "Hold for Owner review."}</p></div>}</Section>
     <Section title="Validation & workflow"><div style={grid}>{runs.length ? runs.map((run: any) => <Card key={run.id} title={pretty(run.agent)}><p>{pretty(run.status)}</p><p>Planned {money(run.plannedCostCents)} · actual {money(run.actualCostCents)}</p><small>{run.stoppedReason || "Deterministic simulation output recorded."}</small></Card>) : <Card title="No agent runs">No validation output exists for this draft.</Card>}</div><p style={muted}>Packet total: planned {money(planned)} · actual {money(actual)}</p></Section>
