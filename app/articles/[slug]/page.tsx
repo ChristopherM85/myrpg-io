@@ -4,6 +4,8 @@ import { getDb } from "../../../db";
 import { agentRuns, articles, games, mediaAssets } from "../../../db/schema";
 import { EditorialVisual } from "../../components/EditorialVisual";
 import { PublicFooter, PublicHeader } from "../../components/PublicChrome";
+import { WriterPortrait } from "../../components/WriterPortrait";
+import { MAYA } from "../../components/writers";
 
 export const dynamic = "force-dynamic";
 const base = "https://myrpg.io";
@@ -36,7 +38,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <EditorialVisual title={article.title} label="Human-reviewed coverage" image={visual} />
     <p style={summary}>{article.summary}</p>
     {supporting.map((asset) => <EditorialVisual key={asset.id} title={article.title} category="Supporting official media" label="Approved media" image={asset} eager={false} />)}
-    <section style={notes}><h2>Source & Editorial Notes</h2><p>By Maya Chen, Signal Editor — a fictional AI editorial persona overseen by the MyRPG human director.</p><p>Published: {article.publishedAt} · Last fact-check: {article.factCheckedAt}</p><p>Source: <a href={article.sourceUrl} rel="noopener noreferrer" target="_blank">Official source</a></p><p>This is an AI-assisted, human-reviewed factual summary. MyRPG does not publish autonomous coverage.</p></section>
+    <section style={notes}><h2>Source & Editorial Notes</h2><a href={`/writers#${MAYA.slug}`} style={authorCard}><div style={{ width: 56, flex: "0 0 56px", overflow: "hidden" }}><WriterPortrait writer={MAYA} compact /></div><span><strong>{MAYA.name}, {MAYA.title}</strong><br /><small>MyRPG editorial persona · AI-assisted, human-reviewed</small></span></a><p>Published: {article.publishedAt} · Last fact-check: {article.factCheckedAt}</p><p>Source: <a href={article.sourceUrl} rel="noopener noreferrer" target="_blank">Official source</a></p><p>This is an AI-assisted, human-reviewed factual summary. MyRPG does not publish autonomous coverage.</p></section>
     {relatedGame && <section style={related}><h2>Related game</h2><p><a href={`/games/${relatedGame.slug}`}>{relatedGame.name}</a> — its human-approved profile is based on structured factual fields and official sources.</p></section>}
     <aside style={network}><small>FEATURED GAME FROM THE MYRPG NETWORK</small><p>MyMafia.io — Build an empire. Keep an alibi.</p><a href="https://mymafia.io?utm_source=myrpg.io&utm_medium=network_promo&utm_campaign=mymafia_beta" target="_blank" rel="noopener sponsored">Enter the city →</a></aside>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: article.title, description: article.summary, datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: url, author: { "@type": "Organization", name: "MyRPG.IO" }, image: visual?.assetUrl || undefined }) }} />
@@ -56,5 +58,6 @@ const kicker = { marginTop: 40, color: "#d0aa59", letterSpacing: 2, fontSize: 12
 const heading = { fontSize: "clamp(2rem,6vw,4rem)", lineHeight: 1.05 };
 const summary = { fontSize: 20, lineHeight: 1.6, color: "#c4cad8" };
 const notes = { borderTop: "1px solid #2a3041", marginTop: 28, paddingTop: 24, color: "#c4cad8", lineHeight: 1.65 };
+const authorCard = { display: "flex", gap: 12, alignItems: "center", maxWidth: 410, padding: 10, background: "#111722", border: "1px solid #293142", color: "#edf3f5", textDecoration: "none" };
 const related = { border: "1px solid #2a3041", padding: 20, marginTop: 28, background: "#121622", color: "#c4cad8" };
 const network = { border: "1px solid #735d2e", padding: 20, marginTop: 32, color: "#c4cad8" };
