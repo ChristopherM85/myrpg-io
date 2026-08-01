@@ -43,8 +43,8 @@ type Item = {
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
 
-export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage }: {
-  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number };
+export default function Console({ role, articles, games, sources, runs, audits, media, settings, overview, visualCoverage, launchBatch }: {
+  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number }; launchBatch: { ready: number; correction: number; hold: number };
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -81,6 +81,11 @@ export default function Console({ role, articles, games, sources, runs, audits, 
     <section className="director-console-section">
       <h2>Publishing overview</h2><p className="director-console-helper">Final publication remains Owner-only. Open the relevant review packet to see the exact readiness checks.</p>
       <div className="director-console-grid"><article className="director-console-card"><small>ARTICLES READY / IN REVIEW</small><h3>{overview.articles}</h3><p>Blocked until source, fact check, duplicate record, word count, and Owner decision all pass.</p>{reviewNext[0] && <button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(reviewNext[0].id)}`)}>Review next article</button>}</article><article className="director-console-card"><small>GAMES READY TO PUBLISH</small><h3>{overview.games}</h3><p>Open Game Management for exact field and source blockers.</p><a href="/admin/games">Open Game Management</a></article><article className="director-console-card"><small>CALENDAR ITEMS READY</small><h3>{overview.calendar}</h3><p>Only approved records with confirmed or estimated dates can proceed.</p><a href="/admin/games">Open calendar review</a></article><article className="director-console-card"><small>RECENT PUBLISHED RECORDS</small><h3>{overview.published}</h3><p>Published records are the only ones visible on public pages.</p><a href="/admin/quality">Run quality report</a></article></div>
+    </section>
+
+    <section className="director-console-section">
+      <h2>Launch batch</h2><p className="director-console-helper">Private games, calendar records, and article packets are grouped from their current source, freshness, and review state. “Ready” means ready for an Owner decision, never automatic publication.</p>
+      <div className="director-console-grid"><article className="director-console-card"><small>READY FOR REVIEW</small><h3>{launchBatch.ready}</h3><p>Source-backed records that can move to an Owner decision.</p></article><article className="director-console-card"><small>NEEDS CORRECTION</small><h3>{launchBatch.correction}</h3><p>Records missing a required source, date, draft detail, or other factual check.</p></article><article className="director-console-card"><small>HOLD</small><h3>{launchBatch.hold}</h3><p>Archived, rejected, or intentionally unresolved records.</p><a href="/admin/games">Review game and calendar batch</a></article></div>
     </section>
 
     <section className="director-console-section">
