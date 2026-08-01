@@ -1,6 +1,6 @@
 import { requireChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { articles, games, sourceCache, sources, users } from "../../../db/schema";
+import { articles, games, mediaAssets, sourceCache, sources, users } from "../../../db/schema";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,24 @@ export default async function QualityPage() {
       if (game.factCheckedAt && Date.now() - Date.parse(game.factCheckedAt) > 1000 * 60 * 60 * 24 * 30) issues.push(`${prefix}: fact check is older than 30 days`);
       if (gameSlugs.has(game.slug)) issues.push(`${prefix}: duplicate slug`); gameSlugs.add(game.slug);
       if (!game.published && game.reviewStatus !== "approved") issues.push(`${prefix}: Owner review decision is still required`);
+    }
+    const media = await db.select().from(mediaAssets);
+    const activeMedia = media.filter((asset) => asset.status !== "archived");
+    for (const asset of activeMedia) {
+      const target = asset.articleId || asset.gameId;
+      const prefix = `media ${asset.id}`;
+      if (!target || (asset.articleId && asset.gameId)) issues.push(`${prefix}: target record is missing or invalid`);
+      if (!asset.altText.trim()) issues.push(`${prefix}: alt text is missing`);
+      if (!asset.rightsNotes?.trim()) issues.push(`${prefix}: rights notes are missing`);
+      if (!asset.width || !asset.height) issues.push(`${prefix}: image dimensions are missing`);
+      if (asset.articleId && !["lead", "supporting"].includes(asset.placement)) issues.push(`${prefix}: invalid article placement`);
+      if (asset.gameId && !["lead", "game-card", "directory-card"].includes(asset.placement)) issues.push(`${prefix}: invalid game placement`);
+      if (asset.sourceType === "owner_upload" && !asset.r2Key) issues.push(`${prefix}: owner upload is missing its private R2 key`);
+      if (asset.sourceType !== "owner_upload") { if (!asset.sourceUrl) issues.push(`${prefix}: approved media source is missing`); else { try { const domain = new URL(asset.sourceUrl).hostname.toLowerCase().replace(/^www\./, ""); if (!approvedDomains.has(domain)) issues.push(`${prefix}: media source domain is not approved`); } catch { issues.push(`${prefix}: media source URL is invalid`); } } }
+    }
+    for (const [target, assets] of Object.entries(activeMedia.reduce<Record<string, typeof activeMedia>>((all, asset) => { const key = asset.articleId || asset.gameId || asset.id; (all[key] ||= []).push(asset); return all; }, {}))) {
+      if (assets.filter((asset) => asset.placement === "lead").length > 1) issues.push(`media target ${target}: more than one active lead visual`);
+      if (assets.some((asset) => asset.articleId) && assets.filter((asset) => asset.placement === "supporting").length > 2) issues.push(`media target ${target}: more than two supporting article visuals`);
     }
   } catch { issues.push("D1 records are not available yet."); }
   return <main style={{ padding: 48, fontFamily: "Arial", background: "#090b12", color: "#edf3f5", minHeight: "100vh" }}>

@@ -22,19 +22,20 @@ export default async function ArticlePreviewPage({ params }: { params: Promise<{
     const article = (await db.select().from(articles).where(eq(articles.id, id)).limit(1))[0];
     if (article) {
       const host = new URL(article.sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
-      const [source, runs, decisions, audits, visual, cache] = await Promise.all([
+      const [source, runs, decisions, audits, visual, attachedMedia, cache] = await Promise.all([
         db.select().from(sources).where(eq(sources.domain, host)).limit(1),
         db.select().from(agentRuns).where(eq(agentRuns.itemId, article.id)).orderBy(desc(agentRuns.createdAt)),
         db.select().from(reviewDecisions).where(eq(reviewDecisions.articleId, article.id)).orderBy(desc(reviewDecisions.createdAt)),
         db.select().from(auditEvents).where(and(eq(auditEvents.entityType, "article"), eq(auditEvents.entityId, article.id))).orderBy(desc(auditEvents.createdAt)),
         db.select().from(mediaAssets).where(and(eq(mediaAssets.articleId, article.id), eq(mediaAssets.placement, "lead"), eq(mediaAssets.status, "approved"))).limit(1),
+        db.select().from(mediaAssets).where(eq(mediaAssets.articleId, article.id)),
         db.select().from(sourceCache).where(eq(sourceCache.contentHash, article.contentFingerprint || "")).limit(1),
       ]);
-      packet = { article, source: source[0], runs, decisions, audits, visual: visual[0], cache: cache[0] };
+      packet = { article, source: source[0], runs, decisions, audits, visual: visual[0], attachedMedia, cache: cache[0] };
     }
   } catch { packet = null; }
   if (!packet) return <PrivateState title="Preview unavailable" message="This draft does not exist, is no longer available, or cannot be read by this Owner account." />;
-  const { article, source, runs, decisions, audits, visual, cache } = packet;
+  const { article, source, runs, decisions, audits, visual, attachedMedia, cache } = packet;
   const planned = runs.reduce((sum: number, run: any) => sum + (run.plannedCostCents || 0), 0);
   const actual = runs.reduce((sum: number, run: any) => sum + (run.actualCostCents || 0), 0);
   const intakeRun = runs.find((run: any) => run.agent === "director_review" && run.outputJson);
@@ -53,6 +54,7 @@ export default async function ArticlePreviewPage({ params }: { params: Promise<{
     <Section title="Sources & fact check"><p><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" style={accent}>{article.sourceUrl}</a></p><p style={muted}>Approved source: {source?.approved ? "Yes" : "No"} · Confidence: {article.confidence}% · Fact-checked: {article.factCheckedAt || "Missing"}</p>{intake && <div style={card}><strong>Official announcement intake</strong><p style={muted}>Related published game: {intake.gameName || "Not recorded"} · Source date: {intake.sourceDate || "Missing"}</p><p style={muted}>Normalized URL: {intake.normalizedUrl || article.sourceUrl} · Duplicate result: {intake.duplicate || "Not recorded"} · Validation: {intake.validation || "Not recorded"}</p><p style={muted}>Recommendation: {intake.recommendation || "Hold for Owner review."}</p></div>}</Section>
     <Section title="Validation & workflow"><div style={grid}>{runs.length ? runs.map((run: any) => <Card key={run.id} title={pretty(run.agent)}><p>{pretty(run.status)}</p><p>Planned {money(run.plannedCostCents)} · actual {money(run.actualCostCents)}</p><small>{run.stoppedReason || "Deterministic simulation output recorded."}</small></Card>) : <Card title="No agent runs">No validation output exists for this draft.</Card>}</div><p style={muted}>Packet total: planned {money(planned)} · actual {money(actual)}</p></Section>
     <Section title="Lead visual"><Card title={visual ? "Approved visual" : "MyRPG editorial fallback"}>{visual ? <><p>{visual.altText}</p><p>{visual.credit || "Credit not supplied"}</p><p><a href={visual.assetUrl || visual.sourceUrl || "#"} target="_blank" rel="noopener noreferrer" style={accent}>View approved asset</a></p></> : <p>MyRPG editorial graphic — not gameplay. A lead visual has not yet been approved.</p>}</Card></Section>
+    <Section title="Attached media records"><div style={grid}>{attachedMedia.length ? attachedMedia.map((asset: any) => <Card key={asset.id} title={asset.placement}><p>{asset.altText}</p><p style={muted}>{pretty(asset.sourceType)} · {pretty(asset.status)} · {asset.width || "?"}×{asset.height || "?"}</p><a href={`/admin/media/${asset.id}`} style={accent}>Open media record</a></Card>) : <Card title="No attached media">The labelled MyRPG editorial fallback will be used until an Owner approves media.</Card>}</div></Section>
     <Section title="Review decisions"><History items={decisions.map((item: any) => `${pretty(item.decision)} by ${item.decidedBy} · ${item.createdAt}${item.note ? ` — ${item.note}` : ""}`)} empty="No review decision has been recorded." /></Section>
     <Section title="Audit trail"><History items={audits.map((item: any) => `${pretty(item.action)} · ${item.actorEmail} · ${item.createdAt}`)} empty="No audit events have been recorded." /></Section>
   </main>;
