@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import styles from "./console.module.css";
+
+const styles = {
+  section: "director-console-section",
+  helper: "director-console-helper",
+  grid: "director-console-grid",
+  card: "director-console-card",
+  row: "director-console-row",
+  empty: "director-console-empty",
+};
 
 type Item = {
   id: string;
@@ -45,34 +53,34 @@ export default function Console({ role, articles, sources, runs, audits, media, 
   const action = (kind: string, actionName: string, id?: string, value?: string | boolean | number) => send({ kind, action: actionName, id, value });
   const sourceHost = (value?: string) => { try { return new URL(value || "").hostname; } catch { return value || "Source missing"; } };
 
-  return <main className={styles.root}>
-    <header className={styles.header}>
-      <div className={styles.kicker}>MYRPG / DIRECTOR CONSOLE</div>
+  return <main className="director-console">
+    <header className="director-console-header">
+      <div className="director-console-kicker">MYRPG / DIRECTOR CONSOLE</div>
       <h1>Editorial operations</h1>
       <p>Role: <strong>{role}</strong> · Simulation only · Live model calls are off · Publishing is human-controlled.</p>
-      <div className={styles.actions}>
-        <button className={styles.primary} disabled={busy} onClick={() => send({}, "/api/admin/simulate")}>Create simulation candidate</button>
+      <div className="director-console-actions">
+        <button className="director-console-primary" disabled={busy} onClick={() => send({}, "/api/admin/simulate")}>Create simulation candidate</button>
         <button disabled={busy} onClick={() => action("budget", "stop", undefined, !settings.stop)}>{settings.stop ? "Release emergency stop" : "Emergency stop"}</button>
         <button disabled={busy} onClick={() => action("settings", "promotion", undefined, !settings.promotion)}>{settings.promotion ? "Hide MyMafia placements" : "Show MyMafia placements"}</button>
       </div>
-      {message && <p className={styles.message}>{message}</p>}
+      {message && <p className="director-console-message">{message}</p>}
     </header>
 
-    <section className={styles.section}>
+    <section className="director-console-section">
       <h2>Review Queue & Content Library</h2>
-      <p className={styles.helper}>Nothing can publish until you approve it.</p>
-      <div className={styles.grid}>{articles.length ? articles.map((article) => <article className={styles.card} key={article.id}>
+      <p className="director-console-helper">Nothing can publish until you approve it.</p>
+      <div className="director-console-grid">{articles.length ? articles.map((article) => <article className="director-console-card" key={article.id}>
         <small>{article.status?.toUpperCase() || "DRAFT"} · human review required</small><h3>{article.title}</h3><p>{article.summary}</p>
-        <div className={styles.row}>{["approve", "publish", "reject", "archive", "restore", "unpublish"].map((name) => <button key={name} disabled={busy} onClick={() => action("article", name, article.id)}>{name}</button>)}</div>
-      </article>) : <div className={styles.empty}>No records yet. Create a deterministic simulation candidate to test the full review workflow.</div>}</div>
+        <div className="director-console-row">{["approve", "publish", "reject", "archive", "restore", "unpublish"].map((name) => <button key={name} disabled={busy} onClick={() => action("article", name, article.id)}>{name}</button>)}</div>
+      </article>) : <div className="director-console-empty">No records yet. Create a deterministic simulation candidate to test the full review workflow.</div>}</div>
     </section>
 
-    <section className={styles.section}>
+    <section className="director-console-section">
       <h2>Source Registry</h2>
-      <form className={styles.form} onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); send({ kind: "source", action: "add", label: values.get("label"), domain: values.get("domain") }); }}>
+      <form className="director-console-form" onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); send({ kind: "source", action: "add", label: values.get("label"), domain: values.get("domain") }); }}>
         <input name="label" placeholder="Source label" required /><input name="domain" placeholder="https://official-game-site.com" required /><button disabled={busy}>Add source</button>
       </form>
-      <div className={styles.grid}>{sources.map((source) => <article className={styles.card} key={source.id}><h3>{source.label}</h3><p>{source.domain}</p><button disabled={busy} onClick={() => action("source", source.approved ? "disable" : "approve", source.id)}>{source.approved ? "Disable" : "Approve"}</button></article>)}</div>
+      <div className="director-console-grid">{sources.map((source) => <article className="director-console-card" key={source.id}><h3>{source.label}</h3><p>{source.domain}</p><button disabled={busy} onClick={() => action("source", source.approved ? "disable" : "approve", source.id)}>{source.approved ? "Disable" : "Approve"}</button></article>)}</div>
     </section>
 
     <section className={styles.section}>
