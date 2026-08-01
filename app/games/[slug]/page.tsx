@@ -28,7 +28,7 @@ export default async function Game({ params }: { params: Promise<{ slug: string 
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  try { const record = await loadGame(slug); if (record) return { title: `${record.game.name} MMO profile | MyRPG.IO`, description: (record.game.directorySummary || `Factual ${record.game.name} MMO profile with official sources and fact-check details.`).slice(0, 155), alternates: { canonical: `${base}/games/${record.game.slug}` }, robots: { index: true, follow: true } }; } catch { /* unavailable records stay private */ }
+  try { const record = await loadGame(slug); if (record) { const title = `${record.game.name} MMO profile | MyRPG.IO`; const description = (record.game.directorySummary || `Factual ${record.game.name} MMO profile with official sources and fact-check details.`).slice(0, 155); const url = `${base}/games/${record.game.slug}`; return { title, description, alternates: { canonical: url }, openGraph: { title, description, url, images: record.visual?.assetUrl ? [record.visual.assetUrl] : undefined }, robots: { index: true, follow: true } }; } } catch { /* unavailable records stay private */ }
   return { robots: { index: false, follow: false } };
 }
 

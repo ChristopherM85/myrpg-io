@@ -86,7 +86,8 @@ export default async function OfficialUpdates() {
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = await searchParams;
-  return { title: "Official MMO Updates | MyRPG.IO", description: "Chronological, source-linked official MMO updates reviewed and published by MyRPG.", alternates: { canonical: `${base}/official-updates` }, robots: Object.keys(query).length ? { index: false, follow: true } : { index: true, follow: true } };
+  const title = "Official MMO Updates | MyRPG.IO"; const description = "Chronological, source-linked official MMO updates reviewed and published by MyRPG.";
+  return { title, description, alternates: { canonical: `${base}/official-updates` }, openGraph: { title, description, url: `${base}/official-updates` }, robots: Object.keys(query).length ? { index: false, follow: true } : { index: true, follow: true } };
 }
 
 const eyebrow = { color: "#76f5e3", fontSize: 11, fontWeight: 800, letterSpacing: 1.5, marginTop: 30 };
