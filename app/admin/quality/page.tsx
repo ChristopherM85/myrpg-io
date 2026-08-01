@@ -29,6 +29,9 @@ export default async function QualityPage() {
     const gameSlugs = new Set<string>();
     for (const game of await db.select().from(games)) {
       const prefix = game.published ? game.name : `${game.name} (review candidate)`;
+      if (game.published && !game.status) issues.push(`${prefix}: MMO Radar status is missing`);
+      if (game.published && !game.platforms) issues.push(`${prefix}: MMO Radar platform field is missing`);
+      if (game.published && !game.releaseDateConfidence) issues.push(`${prefix}: MMO Radar release confidence is missing`);
       if (!game.activity) issues.push(`${prefix}: Find My MMO activity fit is missing`);
       if (!game.timeCommitment) issues.push(`${prefix}: Find My MMO time commitment is missing`);
       if (!game.directorySummary) issues.push(`${prefix}: factual directory summary is missing`);
@@ -61,7 +64,7 @@ export default async function QualityPage() {
   return <main style={{ padding: 48, fontFamily: "Arial", background: "#090b12", color: "#edf3f5", minHeight: "100vh" }}>
     <p>MYRPG / OWNER QUALITY REPORT</p>
     <h1>{issues.length ? `${issues.length} items need attention` : "All records pass the lightweight checks"}</h1>
-    <p>Checks prioritize source approval, fact-check freshness, duplicate slugs, and the activity/time-commitment details that power Find My MMO. Private launch candidates are checked too, so incomplete data is fixed before review.</p>
+    <p>Checks prioritize source approval, fact-check freshness, duplicate slugs, and the factual status, platform, release-confidence, activity, and time-commitment fields that power Find My MMO and MMO Radar. Private launch candidates are checked too, so incomplete data is fixed before review.</p>
     <ul>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
     <a href="/admin">Return to Director Console</a>
   </main>;
