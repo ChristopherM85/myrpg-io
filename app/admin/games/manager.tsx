@@ -1,49 +1,63 @@
 "use client";
-import { useState } from "react";
 
-type Game = Record<string, any>;
-export default function GameManager({ role, games, sources, calendarItems }: { role: string; games: Game[]; sources: Game[]; calendarItems: Game[] }) {
+import { useMemo, useState } from "react";
+
+type RecordItem = Record<string, any>;
+type Filters = { status: string; source: string; confidence: string; readiness: string; matcher: string };
+
+const sourceHost = (url?: string) => { try { return new URL(url || "").hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; } };
+const factCheckIsStale = (value?: string) => !value || Number.isNaN(Date.parse(value)) || Date.now() - Date.parse(value) > 1000 * 60 * 60 * 24 * 30;
+
+function gameBlockers(game: RecordItem, approvedDomains: Set<string>) {
+  const required = [game.name, game.slug, game.status, game.platforms, game.businessModel, game.combat, game.setting, game.focus, game.releaseDate, game.officialUrl, game.sourceUrl, game.factCheckedAt, game.directorySummary];
+  const blockers: string[] = [];
+  if (required.some((value) => !String(value || "").trim())) blockers.push("Incomplete factual fields");
+  if (!approvedDomains.has(sourceHost(game.sourceUrl))) blockers.push("Unapproved source");
+  if (factCheckIsStale(game.factCheckedAt)) blockers.push("Stale fact check");
+  if (game.reviewStatus !== "approved") blockers.push("Missing Owner review decision");
+  if (game.releaseDateConfidence === "unconfirmed") blockers.push("Release date is unconfirmed (profile can still publish)");
+  return blockers;
+}
+
+function calendarBlockers(item: RecordItem, approvedDomains: Set<string>) {
+  const blockers: string[] = [];
+  if (!item.gameId || !item.title || !item.dateLabel || !item.sourceUrl || !item.factCheckedAt) blockers.push("Incomplete calendar fields");
+  if (!approvedDomains.has(sourceHost(item.sourceUrl))) blockers.push("Unapproved source");
+  if (factCheckIsStale(item.factCheckedAt)) blockers.push("Stale fact check");
+  if (item.dateConfidence === "unconfirmed") blockers.push("Unresolved release-date confidence");
+  if (item.reviewStatus !== "approved") blockers.push("Missing Owner review decision");
+  return blockers;
+}
+
+export default function GameManager({ role, games, sources, calendarItems }: { role: string; games: RecordItem[]; sources: RecordItem[]; calendarItems: RecordItem[] }) {
   const [message, setMessage] = useState("");
+  const [filters, setFilters] = useState<Filters>({ status: "", source: "", confidence: "", readiness: "", matcher: "" });
   const send = async (body: Record<string, unknown>) => {
     const response = await fetch("/api/admin/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    const result = await response.json();
-    setMessage(result.error || "Saved. Refreshing…");
-    if (result.ok) setTimeout(() => location.reload(), 500);
+    const result = await response.json(); setMessage(result.error || "Saved. Refreshing…"); if (result.ok) setTimeout(() => location.reload(), 500);
   };
+  const approvedDomains = useMemo(() => new Set(sources.filter((source) => source.approved).map((source) => String(source.domain).toLowerCase())), [sources]);
   const candidates = games.filter((game) => !game.published && game.reviewStatus !== "archived");
-  const sourceName = (url?: string) => { try { return new URL(url || "").hostname.replace(/^www\./, ""); } catch { return "source missing"; } };
+  const filteredGames = candidates.filter((game) => {
+    const blockers = gameBlockers(game, approvedDomains); const hardBlockers = blockers.filter((item) => !item.includes("unconfirmed")); const matcherMissing = !game.activity || !game.timeCommitment;
+    return (!filters.status || game.status === filters.status) && (!filters.source || sourceHost(game.sourceUrl) === filters.source) && (!filters.confidence || game.sourceConfidence === filters.confidence) && (!filters.readiness || (filters.readiness === "ready" ? hardBlockers.length === 0 : hardBlockers.length > 0)) && (!filters.matcher || (filters.matcher === "missing" ? matcherMissing : !matcherMissing));
+  });
+  const setFilter = (key: keyof Filters, value: string) => setFilters((previous) => ({ ...previous, [key]: value }));
+  const activeSources = [...approvedDomains].sort();
   return <main className="console">
-    <p>MYRPG / GAME MANAGEMENT</p>
-    <h1>Factual game records</h1>
-    <p>Launch batch records stay private until the Owner approves and publishes them. Live providers: OFF · $0.00.</p>
+    <p>MYRPG / GAME MANAGEMENT</p><h1>Factual game records</h1><p>Private human-review batch · live providers OFF · $0.00 spent.</p>
     <form className="source-form" onSubmit={(event) => { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); send({ kind: "game", action: "create", ...values }); }}>
       {["name", "slug", "status", "platforms", "businessModel", "combat", "setting", "focus", "activity", "timeCommitment", "releaseDate", "officialUrl", "sourceUrl", "factCheckedAt"].map((name) => <input key={name} name={name} placeholder={name} required={!['activity', 'timeCommitment'].includes(name)} />)}
-      <small>Activity and time commitment are optional for publication, but make Find My MMO more useful.</small>
-      <button>Create factual game</button>
+      <select name="releaseDateConfidence" defaultValue="unconfirmed" aria-label="Release-date confidence"><option value="confirmed">confirmed</option><option value="estimated">estimated</option><option value="unconfirmed">unconfirmed</option></select>
+      <small>Activity and time commitment improve Find My MMO; they are never guessed.</small><button>Create factual game</button>
     </form>
-
-    <section>
-      <h2>Launch batch review</h2>
-      <p className="console-sub">{candidates.length} private candidate{candidates.length === 1 ? "" : "s"}. Each needs an Owner decision before it can appear in the directory, calendar, comparison, or matcher.</p>
-      <div className="console-grid">{candidates.map((game) => <article className="console-card" key={game.id}>
-        <small>{String(game.reviewStatus || "draft").toUpperCase()} · source confidence: {game.sourceConfidence || "pending"}</small>
-        <h3>{game.name}</h3>
-        <p>{game.status} · {game.platforms} · {game.businessModel}</p>
-        <p>{game.directorySummary || "No directory summary yet."}</p>
-        <small>Release: {game.releaseDate || "Unconfirmed"} · {game.releaseDateConfidence || "unconfirmed"}</small><br />
-        <small>Source: <a href={game.sourceUrl} target="_blank" rel="noopener noreferrer">{sourceName(game.sourceUrl)}</a> · checked {game.factCheckedAt?.slice(0, 10) || "missing"}</small>
-        <div className="row">
-          <button type="button" onClick={() => window.location.assign(`/admin/preview/game/${encodeURIComponent(game.id)}`)}>Preview packet</button>
-          <button onClick={() => send({ kind: "game", action: "approve", id: game.id })} disabled={role !== "owner"}>Approve</button>
-          <button onClick={() => { const summary = prompt("Edit factual directory summary", game.directorySummary || ""); if (summary !== null) send({ kind: "game", action: "edit", id: game.id, value: summary }); }}>Edit summary</button>
-          <button onClick={() => send({ kind: "game", action: "reject", id: game.id })}>Reject</button>
-          <button onClick={() => send({ kind: "game", action: "archive", id: game.id })}>Archive</button>
-          <button onClick={() => send({ kind: "game", action: "publish", id: game.id })} disabled={role !== "owner" || game.reviewStatus !== "approved"}>Publish</button>
-        </div>
-      </article>)}</div>
+    <section><h2>Batch Review</h2><p className="console-sub">{candidates.length} existing private candidates. No duplicates were added.</p>
+      <div className="source-form" aria-label="Batch review filters"><select aria-label="Filter by game status" value={filters.status} onChange={(event) => setFilter("status", event.target.value)}><option value="">All statuses</option>{["live", "early-access", "announced", "sunset"].map((value) => <option key={value}>{value}</option>)}</select><select aria-label="Filter by source" value={filters.source} onChange={(event) => setFilter("source", event.target.value)}><option value="">All approved sources</option>{activeSources.map((value) => <option key={value}>{value}</option>)}</select><select aria-label="Filter by confidence" value={filters.confidence} onChange={(event) => setFilter("confidence", event.target.value)}><option value="">All confidence</option><option value="high">high</option><option value="pending">pending</option></select><select aria-label="Filter by readiness" value={filters.readiness} onChange={(event) => setFilter("readiness", event.target.value)}><option value="">All readiness</option><option value="ready">Ready except informational date notes</option><option value="blocked">Has blockers</option></select><select aria-label="Filter by matcher fields" value={filters.matcher} onChange={(event) => setFilter("matcher", event.target.value)}><option value="">All matcher coverage</option><option value="complete">Matcher fields complete</option><option value="missing">Matcher fields missing</option></select></div>
+      <p className="console-sub">Showing {filteredGames.length} candidate{filteredGames.length === 1 ? "" : "s"}. Branded MyRPG fallback artwork is ready unless you approve official media.</p>
+      <div className="console-grid">{filteredGames.map((game) => { const blockers = gameBlockers(game, approvedDomains); const publishingBlockers = blockers.filter((item) => !item.includes("unconfirmed")); return <article className="console-card" key={game.id}><small>{String(game.reviewStatus || "draft").toUpperCase()} · source confidence: {game.sourceConfidence || "pending"}</small><h3>{game.name}</h3><p>{game.status} · {game.platforms} · {game.businessModel}</p><p>{game.directorySummary || "No directory summary yet."}</p><small>Release: {game.releaseDate || "Unconfirmed"} · {game.releaseDateConfidence || "unconfirmed"}</small><br /><small>Source: <a href={game.sourceUrl} target="_blank" rel="noopener noreferrer">{sourceHost(game.sourceUrl) || "missing"}</a> · checked {game.factCheckedAt?.slice(0, 10) || "missing"}</small><p className={publishingBlockers.length ? "console-message" : "console-sub"}>{blockers.length ? `Readiness: ${blockers.join(" · ")}` : "Ready for Owner publication."}</p><div className="row"><button type="button" onClick={() => window.location.assign(`/admin/preview/game/${encodeURIComponent(game.id)}`)}>Preview packet</button><button onClick={() => send({ kind: "game", action: "approve", id: game.id })} disabled={role !== "owner"}>Approve</button><button onClick={() => { const summary = prompt("Edit factual directory summary", game.directorySummary || ""); if (summary !== null) send({ kind: "game", action: "edit", id: game.id, value: summary }); }}>Edit summary</button><button onClick={() => send({ kind: "game", action: "reject", id: game.id })}>Reject</button><button onClick={() => send({ kind: "game", action: "archive", id: game.id })}>Archive</button><button onClick={() => send({ kind: "game", action: "publish", id: game.id })} disabled={role !== "owner" || publishingBlockers.length > 0}>Publish</button></div></article>; })}</div>
     </section>
-    <section><h2>Source Registry coverage</h2><p className="console-sub">{sources.filter((source) => source.approved).length} approved source domains. Candidate creation is blocked until its official source domain is approved.</p></section>
-    <section><h2>Release calendar review</h2><p className="console-sub">These 10 items are private drafts. Confirm the date label and confidence before publishing.</p><div className="console-grid">{calendarItems.filter((item) => !item.published && item.reviewStatus !== "archived").map((item) => <article className="console-card" key={item.id}><small>{String(item.reviewStatus).toUpperCase()} · {item.dateConfidence}</small><h3>{item.title}</h3><p>{item.dateLabel}</p><small>Checked {item.factCheckedAt?.slice(0, 10)} · <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Official source</a></small><div className="row"><button onClick={() => send({ kind: "calendar", action: "approve", id: item.id })} disabled={role !== "owner"}>Approve</button><button onClick={() => send({ kind: "calendar", action: "reject", id: item.id })}>Reject</button><button onClick={() => send({ kind: "calendar", action: "archive", id: item.id })}>Archive</button><button onClick={() => send({ kind: "calendar", action: "publish", id: item.id })} disabled={role !== "owner" || item.reviewStatus !== "approved"}>Publish</button></div></article>)}</div></section>
+    <section><h2>Source Registry coverage</h2><p className="console-sub">{sources.filter((source) => source.approved).length} approved official domains. A candidate cannot publish unless its source domain is approved.</p></section>
+    <section><h2>Release calendar review</h2><p className="console-sub">Calendar drafts require an approved source, current fact check, a resolved date confidence, and Owner approval.</p><div className="console-grid">{calendarItems.filter((item) => !item.published && item.reviewStatus !== "archived").map((item) => { const blockers = calendarBlockers(item, approvedDomains); return <article className="console-card" key={item.id}><small>{String(item.reviewStatus).toUpperCase()} · {item.dateConfidence}</small><h3>{item.title}</h3><p>{item.dateLabel}</p><small>Checked {item.factCheckedAt?.slice(0, 10)} · <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Official source</a></small><p className={blockers.length ? "console-message" : "console-sub"}>{blockers.length ? `Readiness: ${blockers.join(" · ")}` : "Ready for Owner publication."}</p><div className="row"><button type="button" onClick={() => window.location.assign(`/admin/preview/calendar/${encodeURIComponent(item.id)}`)}>Preview packet</button><button onClick={() => send({ kind: "calendar", action: "approve", id: item.id })} disabled={role !== "owner"}>Approve</button><button onClick={() => send({ kind: "calendar", action: "reject", id: item.id })}>Reject</button><button onClick={() => send({ kind: "calendar", action: "archive", id: item.id })}>Archive</button><button onClick={() => send({ kind: "calendar", action: "publish", id: item.id })} disabled={role !== "owner" || blockers.length > 0}>Publish</button></div></article>; })}</div></section>
     {message && <p className="console-message">{message}</p>}
   </main>;
 }
