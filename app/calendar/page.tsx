@@ -1,25 +1,4 @@
-import { getDb } from "../../db";
-import { calendarItems, games } from "../../db/schema";
-import { and, eq } from "drizzle-orm";
-
-export const dynamic = "force-dynamic";
-
-export default async function Calendar() {
-  let rows: Array<{ item: typeof calendarItems.$inferSelect; game: typeof games.$inferSelect }> = [];
-  try {
-    rows = await getDb().select({ item: calendarItems, game: games }).from(calendarItems)
-      .innerJoin(games, eq(calendarItems.gameId, games.id))
-      .where(and(eq(calendarItems.published, true), eq(games.published, true)));
-  } catch {}
-
-  return <main style={{ maxWidth: 900, margin: "auto", padding: 48 }}>
-    <p>MYRPG / RELEASE CALENDAR</p>
-    <h1>MMO releases</h1>
-    <p>Dates are shown exactly as confirmed by their official sources. Estimated and unconfirmed dates are clearly labelled.</p>
-    {rows.length ? rows.map(({ item, game }) => <article key={item.id}>
-      <h2><a href={`/games/${game.slug}`}>{item.title}</a></h2>
-      <p>{item.dateLabel} <strong>— {item.dateConfidence}</strong></p>
-      <small>Fact-checked {item.factCheckedAt.slice(0, 10)} · <a href={item.sourceUrl} rel="noopener noreferrer">Official source</a></small>
-    </article>) : <p>Reviewed calendar entries will appear here after publication.</p>}
-  </main>;
-}
+import { getDb } from "../../db"; import { calendarItems, games } from "../../db/schema"; import { and, eq } from "drizzle-orm"; import { PublicPage } from "../components/PublicChrome";
+export const dynamic="force-dynamic"; export const metadata={title:"MMO Release Calendar | MyRPG.IO",description:"Officially sourced MMO release dates and windows.",alternates:{canonical:"https://myrpg.io/calendar"}};
+export default async function Calendar(){let rows:any[]=[];try{rows=await getDb().select({item:calendarItems,game:games}).from(calendarItems).innerJoin(games,eq(calendarItems.gameId,games.id)).where(and(eq(calendarItems.published,true),eq(games.published,true)))}catch{}return <PublicPage><nav aria-label="Breadcrumb"><a href="/">Home</a> / Calendar</nav><p style={eyebrow}>MYRPG / RELEASE CALENDAR</p><h1 style={heading}>MMO releases</h1><p style={muted}>Confirmed, estimated, and unconfirmed dates are kept visually distinct so guesses never look like announcements.</p>{rows.length?<section style={{marginTop:28}}>{rows.map(({item,game})=><article key={item.id} style={row}><small style={{color:item.dateConfidence==="confirmed"?"#76f5e3":"#c9a666",fontWeight:800}}>{item.dateConfidence.toUpperCase()}</small><h2><a href={`/games/${game.slug}`} style={link}>{item.title}</a></h2><p>{item.dateLabel}</p><small>Recently fact-checked {item.factCheckedAt.slice(0,10)} · <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" style={link}>Official source</a></small></article>)}</section>:<section style={empty}><h2>No reviewed release items yet</h2><p>Only owner-published dates backed by official sources appear here.</p></section>}</PublicPage>}
+const eyebrow={color:"#76f5e3",fontSize:11,fontWeight:800,letterSpacing:1.5,marginTop:30};const heading={fontSize:"clamp(2.6rem,7vw,5rem)",letterSpacing:"-.06em",margin:"12px 0"};const muted={color:"#aeb6c7",lineHeight:1.6};const row={borderTop:"1px solid #273044",padding:"20px 0"};const link={color:"#76f5e3"};const empty={borderLeft:"3px solid #c9a666",padding:"20px",background:"#101521",marginTop:28};
