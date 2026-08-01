@@ -6,7 +6,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "prebuild": "node -e \"for (const p of ['dist','.vinext','.vite']) require('fs').rmSync(p,{recursive:true,force:true})\"",
+    "prebuild": "node -e \"for (const p of ['dist','.vinext','.vite','node_modules/.vite']) require('fs').rmSync(p,{recursive:true,force:true})\"",
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
