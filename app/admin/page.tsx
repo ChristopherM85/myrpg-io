@@ -3,8 +3,23 @@ import { getDb } from "../../db";
 import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, editorialPlans, games, mediaAssets, searchEngineStatuses, siteSettings, sources, users } from "../../db/schema";
 import { desc, eq } from "drizzle-orm";
 import Console from "./console";
+import { editorialGraphic, recommendEditorialGraphic } from "../components/editorial-media";
 
 export const dynamic = "force-dynamic";
+
+function adjacentArtworkRuns(label: string, rows: any[]) {
+  const findings: { route: string; graphic: string; count: number; titles: string[] }[] = [];
+  let start = 0;
+  for (let index = 1; index <= rows.length; index++) {
+    const previous = rows[index - 1]?.editorialGraphic || "neutral";
+    const current = rows[index]?.editorialGraphic || "neutral";
+    if (index < rows.length && current === previous) continue;
+    const count = index - start;
+    if (count > 2) findings.push({ route: label, graphic: previous, count, titles: rows.slice(start, index).map((row) => row.title || row.name) });
+    start = index;
+  }
+  return findings;
+}
 
 export default async function AdminPage() {
   const user = await requireChatGPTUser("/admin");
@@ -19,11 +34,22 @@ export default async function AdminPage() {
     const leadApproved = new Set(mediaRows.filter((asset) => asset.status === "approved" && asset.placement === "lead").map(targetFor));
     const pendingTargets = new Set(mediaRows.filter((asset) => asset.status === "pending_review").map(targetFor));
     const metadataIssues = mediaRows.filter((asset) => !asset.altText || !asset.rightsNotes || !asset.width || !asset.height || (!asset.articleId && !asset.gameId)).length;
+    const publishedArticleRows = allArticles.filter((article) => article.status === "published").sort((a, b) => String(b.publishedAt || "").localeCompare(String(a.publishedAt || "")));
+    const publishedGameRows = gameRows.filter((game) => game.published);
     const visualItems = [
-      ...allArticles.filter((article) => article.status === "published").map((article) => { const target = `article:${article.id}`; const asset = mediaRows.find((item) => targetFor(item) === target && item.placement === "lead"); return { id: article.id, kind: "article", title: article.title, state: leadApproved.has(target) ? "approved official visual" : pendingTargets.has(target) ? "pending media review" : "MyRPG fallback in use", graphic: article.editorialGraphic || "neutral", assetId: asset?.id || null, previewHref: `/admin/preview/article/${article.id}` }; }),
-      ...gameRows.filter((game) => game.published).map((game) => { const target = `game:${game.id}`; const asset = mediaRows.find((item) => targetFor(item) === target && item.placement === "lead"); return { id: game.id, kind: "game", title: game.name, state: leadApproved.has(target) ? "approved official visual" : pendingTargets.has(target) ? "pending media review" : "MyRPG fallback in use", graphic: game.editorialGraphic || "neutral", assetId: asset?.id || null, previewHref: `/admin/preview/game/${game.id}` }; }),
+      ...publishedArticleRows.map((article) => { const target = `article:${article.id}`; const asset = mediaRows.find((item) => targetFor(item) === target && item.placement === "lead"); const recommendation = recommendEditorialGraphic({ kind: "article", title: article.title }); return { id: article.id, kind: "article", title: article.title, state: leadApproved.has(target) ? "approved official visual" : pendingTargets.has(target) ? "pending media review" : "MyRPG fallback in use", graphic: article.editorialGraphic || "neutral", recommendation, recommendationLabel: editorialGraphic(recommendation).label, assetId: asset?.id || null, previewHref: `/admin/preview/article/${article.id}` }; }),
+      ...publishedGameRows.map((game) => { const target = `game:${game.id}`; const asset = mediaRows.find((item) => targetFor(item) === target && item.placement === "lead"); const recommendation = recommendEditorialGraphic({ kind: "game", title: game.name, setting: game.setting }); return { id: game.id, kind: "game", title: game.name, state: leadApproved.has(target) ? "approved official visual" : pendingTargets.has(target) ? "pending media review" : "MyRPG fallback in use", graphic: game.editorialGraphic || "neutral", recommendation, recommendationLabel: editorialGraphic(recommendation).label, assetId: asset?.id || null, previewHref: `/admin/preview/game/${game.id}` }; }),
     ];
-    const visualCoverage = { approved: publishedTargets.filter((target) => leadApproved.has(target)).length, fallback: publishedTargets.filter((target) => !leadApproved.has(target)).length, pending: [...pendingTargets].filter(Boolean).length, metadata: metadataIssues, items: visualItems };
+    const artworkGroups = [...new Set(visualItems.map((item) => item.graphic))].map((graphic) => ({ graphic, label: editorialGraphic(graphic).label, count: visualItems.filter((item) => item.graphic === graphic).length })).sort((a, b) => b.count - a.count);
+    const duplication = [
+      ...adjacentArtworkRuns("Home · latest news", publishedArticleRows.slice(0, 4)),
+      ...adjacentArtworkRuns("Home · featured games", publishedGameRows.slice(0, 6)),
+      ...adjacentArtworkRuns("News", publishedArticleRows),
+      ...adjacentArtworkRuns("Official Updates", publishedArticleRows),
+      ...adjacentArtworkRuns("Games", publishedGameRows),
+      ...adjacentArtworkRuns("MMO Radar", [...publishedGameRows].sort((a, b) => String(b.factCheckedAt || "").localeCompare(String(a.factCheckedAt || "")))),
+    ].map((finding) => ({ ...finding, label: editorialGraphic(finding.graphic).label }));
+    const visualCoverage = { approved: publishedTargets.filter((target) => leadApproved.has(target)).length, fallback: publishedTargets.filter((target) => !leadApproved.has(target)).length, pending: [...pendingTargets].filter(Boolean).length, metadata: metadataIssues, items: visualItems, artworkGroups, duplication };
     const launchBatch = { ready: 0, correction: 0, hold: 0 };
     const classify = (record: any, type: "article" | "game" | "calendar") => { if (record.published || record.status === "published") return; if (record.reviewStatus === "archived" || record.reviewStatus === "rejected" || record.status === "archived" || record.status === "rejected") { launchBatch.hold++; return; } if (type === "article") { const words = String(record.summary || "").trim().split(/\s+/).filter(Boolean).length; record.status === "review" && record.sourceUrl && record.factCheckedAt && words >= 120 && words <= 180 ? launchBatch.ready++ : launchBatch.correction++; return; } if (type === "calendar") { record.dateConfidence === "unconfirmed" ? launchBatch.hold++ : record.sourceUrl && record.factCheckedAt ? launchBatch.ready++ : launchBatch.correction++; return; } record.sourceConfidence === "high" && record.sourceUrl && record.factCheckedAt ? launchBatch.ready++ : launchBatch.hold++; };
     allArticles.forEach((record) => classify(record, "article")); gameRows.forEach((record) => classify(record, "game")); calendarRows.forEach((record) => classify(record, "calendar"));

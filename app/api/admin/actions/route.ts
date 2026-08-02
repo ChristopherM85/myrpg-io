@@ -80,13 +80,13 @@ export async function POST(request: Request) {
   if (kind === "editorial_graphic") {
     if (role !== "owner") return Response.json({ error: "Only the Owner can select a public MyRPG editorial graphic." }, { status: 403 });
     const graphic = String(body.value || "");
-    if (!body.id || !["neutral", "fantasy", "science", "science-transit", "science-campaign", "anime", "historical", "strategy"].includes(graphic)) return Response.json({ error: "Choose a valid MyRPG editorial graphic." }, { status: 400 });
+    if (!body.id || !["neutral", "fantasy", "science", "science-transit", "science-campaign", "anime", "historical", "strategy", "fantasy-live", "science-profile", "anime-update", "historical-world", "neutral-industry"].includes(graphic)) return Response.json({ error: "Choose a valid MyRPG editorial graphic." }, { status: 400 });
     const target = body.action === "article" ? articles : body.action === "game" ? games : null;
     if (!target) return Response.json({ error: "Choose an article or game record." }, { status: 400 });
     const record = await db.select().from(target).where(eq(target.id, body.id)).limit(1);
     if (!record[0] || (body.action === "article" ? record[0].status !== "published" : !record[0].published)) return Response.json({ error: "Editorial graphics can only be selected for published records." }, { status: 409 });
     await db.update(target).set({ editorialGraphic: graphic, updatedAt: stamp() }).where(eq(target.id, body.id));
-    await audit(db, email, "editorial_graphic_selected", body.action, body.id, { graphic, rights: "Original MyRPG editorial artwork; not gameplay" });
+    await audit(db, email, "editorial_graphic_selected", body.action, body.id, { graphic, rights: "Original MyRPG editorial artwork; not gameplay." });
     return Response.json({ ok: true });
   }
   if (!allowed(role, kind)) return Response.json({ error: "Owner permission required" }, { status: 403 });

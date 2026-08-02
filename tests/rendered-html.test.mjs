@@ -29,3 +29,17 @@ test("adds safe baseline security headers at the Worker boundary", async () => {
   for (const header of ["Strict-Transport-Security", "X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy", "Permissions-Policy"]) assert.ok(worker.includes(header));
   assert.match(worker, /withSecurityHeaders\(await handler\.fetch/);
 });
+
+test("ships distinct original artwork recommendations without automatic assignment", async () => {
+  const [media, admin, consoleUi, actions, files] = await Promise.all([
+    read("app/components/editorial-media.ts"), read("app/admin/page.tsx"), read("app/admin/console.tsx"), read("app/api/admin/actions/route.ts"), readdir(new URL("public/editorial", root)),
+  ]);
+  for (const name of ["fantasy-live-service-intelligence.png", "science-profile-intelligence.png", "anime-update-intelligence.png", "historical-world-intelligence.png", "neutral-industry-intelligence.png"]) assert.ok(files.includes(name));
+  for (const key of ["fantasy-live", "science-profile", "anime-update", "historical-world", "neutral-industry"]) assert.ok(media.includes(`\"${key}\"`));
+  assert.match(media, /recommendEditorialGraphic/);
+  assert.match(media, /Original MyRPG editorial artwork; not gameplay\./);
+  assert.match(admin, /adjacentArtworkRuns/);
+  assert.match(consoleUi, /Artwork duplication report/);
+  assert.match(consoleUi, /Apply recommendation/);
+  assert.match(actions, /Only the Owner can select a public MyRPG editorial graphic/);
+});
