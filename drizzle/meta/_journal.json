@@ -57,6 +57,13 @@
       "when": 1785587752867,
       "tag": "0008_rights_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785668337223,
+      "tag": "0008_low_blur",
+      "breakpoints": true
     }
   ]
 }

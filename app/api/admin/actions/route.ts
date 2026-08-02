@@ -1,6 +1,6 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, games, mediaAssets, reviewDecisions, siteSettings, sourceCache, sources, users } from "../../../../db/schema";
+import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, editorialPlans, games, mediaAssets, reviewDecisions, searchEngineStatuses, siteSettings, sourceCache, sources, users } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 const stamp = () => new Date().toISOString();
@@ -47,8 +47,36 @@ async function audit(db: ReturnType<typeof getDb>, email: string, action: string
 export async function POST(request: Request) {
   const identity = await actor();
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string };
-  const { db, email, role } = identity; const kind = body.kind ?? "";
+  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string; engine?:string; propertyUrl?:string; verificationStatus?:string; sitemapStatus?:string; proposedDate?:string; contentType?:string; recordId?:string; relatedGame?:string; reviewStatus?:string; mediaStatus?:string; blocker?:string };
+  const { db, email, role } = identity; const kind = body.kind ?? ""; const time = stamp();
+  if (kind === "search_status") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can record search-console status." }, { status: 403 });
+    const engine = String(body.engine || "").toLowerCase();
+    const verificationStatus = String(body.verificationStatus || "not_started"); const sitemapStatus = String(body.sitemapStatus || "not_submitted");
+    if (!["google", "bing"].includes(engine) || !["not_started", "pending", "verified"].includes(verificationStatus) || !["not_submitted", "submitted", "accepted"].includes(sitemapStatus)) return Response.json({ error: "Choose a supported engine and valid manual status." }, { status: 400 });
+    const propertyUrl = String(body.propertyUrl || "https://myrpg.io/").trim();
+    if (propertyUrl !== "https://myrpg.io/") return Response.json({ error: "Use the canonical property https://myrpg.io/." }, { status: 400 });
+    const current = (await db.select().from(searchEngineStatuses).where(eq(searchEngineStatuses.engine, engine)).limit(1))[0]; const recordId = current?.id || id();
+    const values = { engine, propertyUrl, verificationStatus, sitemapStatus, verifiedAt: verificationStatus === "verified" ? current?.verifiedAt || time : null, submittedAt: sitemapStatus !== "not_submitted" ? current?.submittedAt || time : null, notes: String(body.note || "").trim() || null, updatedAt: time };
+    if (current) await db.update(searchEngineStatuses).set(values).where(eq(searchEngineStatuses.id, recordId)); else await db.insert(searchEngineStatuses).values({ id: recordId, ...values, createdAt: time });
+    await audit(db, email, "search_status_recorded", "search_engine", recordId, { engine, verificationStatus, sitemapStatus }); return Response.json({ ok: true });
+  }
+  if (kind === "editorial_plan") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can manage the private editorial calendar." }, { status: 403 });
+    if (body.action === "create") {
+      const proposedDate = String(body.proposedDate || ""); const contentType = String(body.contentType || ""); const title = String(body.title || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(proposedDate) || !["article", "game", "calendar"].includes(contentType) || !title) return Response.json({ error: "Title, proposed date, and supported content type are required." }, { status: 400 });
+      const proposed = new Date(`${proposedDate}T00:00:00Z`); if (Number.isNaN(proposed.valueOf())) return Response.json({ error: "Use a valid proposed date." }, { status: 400 });
+      const day = proposed.getUTCDay(); const monday = new Date(proposed); monday.setUTCDate(proposed.getUTCDate() - ((day + 6) % 7)); const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate() + 6);
+      const weekly = (await db.select().from(editorialPlans)).filter((plan) => { const date = new Date(`${plan.proposedDate}T00:00:00Z`); return date >= monday && date <= sunday && !["cancelled", "published"].includes(plan.status); });
+      if (weekly.length >= 3) return Response.json({ error: "This week already has three active planned publications. Move or complete one before adding another." }, { status: 409 });
+      const planId = id(); await db.insert(editorialPlans).values({ id: planId, recordId: String(body.recordId || "").trim() || null, title, proposedDate, contentType, relatedGame: String(body.relatedGame || "").trim() || null, sourceStatus: String(body.sourceConfidence || "pending"), reviewStatus: String(body.reviewStatus || "planned"), mediaStatus: String(body.mediaStatus || "fallback"), blocker: String(body.blocker || "").trim() || null, status: body.blocker ? "blocked" : "planned", createdAt: time, updatedAt: time });
+      await audit(db, email, "editorial_plan_created", "editorial_plan", planId, { proposedDate, contentType, title }); return Response.json({ ok: true });
+    }
+    if (!body.id || !["ready", "blocked", "published", "cancelled", "planned"].includes(String(body.action))) return Response.json({ error: "Choose a valid planning record and status." }, { status: 400 });
+    await db.update(editorialPlans).set({ status: String(body.action), updatedAt: time }).where(eq(editorialPlans.id, body.id));
+    await audit(db, email, `editorial_plan_${body.action}`, "editorial_plan", body.id); return Response.json({ ok: true });
+  }
   if (kind === "editorial_graphic") {
     if (role !== "owner") return Response.json({ error: "Only the Owner can select a public MyRPG editorial graphic." }, { status: 403 });
     const graphic = String(body.value || "");
@@ -62,7 +90,6 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   }
   if (!allowed(role, kind)) return Response.json({ error: "Owner permission required" }, { status: 403 });
-  const time = stamp();
   if(kind==="game"){
     if(body.action==="create"){
       const fields=[body.name,body.slug,body.status,body.platforms,body.businessModel,body.combat,body.setting,body.focus,body.releaseDate,body.officialUrl,body.sourceUrl,body.factCheckedAt,body.directorySummary];
