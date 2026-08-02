@@ -23,3 +23,9 @@ test("keeps empty public guides out of search results until useful content exist
   assert.match(guides, /robots:\{index:false,follow:true\}/);
   assert.match(guides, /Guides arrive after editorial review/);
 });
+
+test("adds safe baseline security headers at the Worker boundary", async () => {
+  const worker = await read("worker/index.ts");
+  for (const header of ["Strict-Transport-Security", "X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy", "Permissions-Policy"]) assert.ok(worker.includes(header));
+  assert.match(worker, /withSecurityHeaders\(await handler\.fetch/);
+});
