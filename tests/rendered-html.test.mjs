@@ -43,3 +43,11 @@ test("ships distinct original artwork recommendations without automatic assignme
   assert.match(consoleUi, /Apply recommendation/);
   assert.match(actions, /Only the Owner can select a public MyRPG editorial graphic/);
 });
+
+test("renders selected game artwork on MMO Radar with approved-media precedence", async () => {
+  const radar = await read("app/mmo-radar/page.tsx");
+  assert.match(radar, /EditorialVisual/);
+  assert.match(radar, /mediaAssets/);
+  assert.match(radar, /directory-card/);
+  assert.match(radar, /themeKey=\{game\.editorialGraphic\}/);
+});
