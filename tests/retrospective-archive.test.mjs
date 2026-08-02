@@ -12,8 +12,9 @@ test("retrospective intake preserves source and publication date integrity", asy
 });
 
 test("public retrospective coverage uses the real MyRPG publication timestamp", async () => {
-  const [article, news, rss] = await Promise.all([read("app/articles/[slug]/page.tsx"), read("app/news/page.tsx"), read("app/rss.xml/route.ts")]);
+  const [article, news, rss, game] = await Promise.all([read("app/articles/[slug]/page.tsx"), read("app/news/page.tsx"), read("app/rss.xml/route.ts"), read("app/games/[slug]/page.tsx")]);
   for (const token of ["RETROSPECTIVE", "Published by MyRPG", "article.publishedAt"]) assert.ok(article.includes(token));
   assert.ok(news.includes("orderBy(desc(articles.publishedAt))"));
   assert.ok(rss.includes("article.publishedAt || article.createdAt"));
+  for (const token of ["RELATED OFFICIAL UPDATES", "relatedArticles", "gameSlug === game.slug"]) assert.ok(game.includes(token));
 });
