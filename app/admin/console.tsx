@@ -82,7 +82,7 @@ export default function Console({ role, articles, games, sources, runs, audits, 
   const [articleFilter, setArticleFilter] = useState<"all" | "retrospective">("all");
   const filteredReviewNext = articleFilter === "retrospective" ? reviewNext.filter((article) => article.retrospective) : reviewNext;
   const [freshnessDays, setFreshnessDays] = useState(30);
-  const cutoff = Date.now() - freshnessDays * 86400000;
+  const cutoff = Date.parse(launchGate.checkedAt) - freshnessDays * 86400000;
   const currentFacts = health.records.filter((record) => record.factCheckedAt && Date.parse(record.factCheckedAt) >= cutoff).length;
   const staleFacts = health.records.filter((record) => !record.factCheckedAt || Date.parse(record.factCheckedAt) < cutoff).length;
   const fallbackRecords = health.records.filter((record) => record.fallback).length;
