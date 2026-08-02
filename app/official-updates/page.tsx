@@ -65,18 +65,18 @@ export default async function OfficialUpdates() {
       <p style={eyebrow}>{group === "General MMO updates" ? "GENERAL COVERAGE" : "RELATED GAME"}</p>
       <h2 style={h2}>{group}</h2>
       <div style={timeline}>{items.map(({ article, intake, related, visual }) => <article key={article.id} style={entryCard}>
-        <p style={{ ...eyebrow, marginTop: 0 }}>PUBLISHED {displayDate(article.publishedAt)}</p>
+        <p style={{ ...eyebrow, marginTop: 0 }}>{article.retrospective ? "RETROSPECTIVE · " : ""}PUBLISHED {displayDate(article.publishedAt)}</p>
         <h3 style={h3}><a href={`/articles/${article.slug}`}>{article.title}</a></h3>
         {related && <p style={muted}><a href={`/games/${related.slug}`}>Related game: {related.name}</a></p>}
         <EditorialVisual title={article.title} category="Official update" label="Human-reviewed coverage" image={visual} themeKey={article.editorialGraphic} eager={false} />
         <p style={muted}>{article.summary}</p>
         <dl style={facts}>
           <div><dt>Writer</dt><dd><a href={`/writers#${MAYA.slug}`}>{MAYA.name} · {MAYA.title}</a></dd></div>
-          <div><dt>Source date</dt><dd>{displayDate(intake?.sourceDate)}</dd></div>
+          <div><dt>Originally announced</dt><dd>{displayDate(article.sourceDate || intake?.sourceDate)}</dd></div>
           <div><dt>Fact-check</dt><dd>{displayDate(article.factCheckedAt)}</dd></div>
           <div><dt>Primary source</dt><dd><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer">Official source ↗</a></dd></div>
         </dl>
-        <p style={takeaway}><strong>Gamer takeaway:</strong> {intake.gamerTakeaway}</p>
+        <p style={takeaway}><strong>{article.retrospective ? "Why this still matters" : "Gamer takeaway"}:</strong> {article.gamerTakeaway || intake.gamerTakeaway}</p>
         <a href={`/articles/${article.slug}`} style={accent}>Read the full update →</a>
       </article>)}</div>
     </section>) : <section style={empty}><h2>No official updates are published yet</h2><p>MyRPG adds this timeline only after an official source has been reviewed and an Owner has manually published the article.</p><a href="/news" style={accent}>Visit MMO news →</a></section>}

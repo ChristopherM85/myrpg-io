@@ -43,6 +43,7 @@ type Item = {
   relatedGame?: string;
   recommendation?: string;
   gamerTakeaway?: string;
+  retrospective?: boolean;
 };
 
 type Settings = { simulation: boolean; promotion: boolean; daily: number; perJob: number; stop: boolean };
@@ -78,6 +79,8 @@ export default function Console({ role, articles, games, sources, runs, audits, 
   const action = (kind: string, actionName: string, id?: string, value?: string | boolean | number) => send({ kind, action: actionName, id, value });
   const sourceHost = (value?: string) => { try { return new URL(value || "").hostname; } catch { return value || "Source missing"; } };
   const reviewNext = articles.filter((article) => article.status === "review" && !article.title?.startsWith("Simulation:") && article.title && article.summary && article.summary.trim().split(/\s+/).length >= 120 && article.sourceUrl && article.factCheckedAt);
+  const [articleFilter, setArticleFilter] = useState<"all" | "retrospective">("all");
+  const filteredReviewNext = articleFilter === "retrospective" ? reviewNext.filter((article) => article.retrospective) : reviewNext;
   const [freshnessDays, setFreshnessDays] = useState(30);
   const cutoff = Date.now() - freshnessDays * 86400000;
   const currentFacts = health.records.filter((record) => record.factCheckedAt && Date.parse(record.factCheckedAt) >= cutoff).length;
@@ -135,13 +138,15 @@ export default function Console({ role, articles, games, sources, runs, audits, 
     <section className="director-console-section">
       <h2>Official Announcement Intake</h2>
       <p className="director-console-helper">Manual, source-first intake only. Paste a recent announcement from an already approved official domain. This never fetches, crawls, calls a model, or publishes automatically.</p>
-      <form className="director-console-form" onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); send({ kind: "article", action: "intake", sourceUrl: values.get("sourceUrl"), title: values.get("title"), gameId: values.get("gameSlug"), releaseDate: values.get("sourceDate"), factCheckedAt: values.get("factCheckedAt"), value: values.get("summary") }); }}>
+      <form className="director-console-form" onSubmit={(event) => { event.preventDefault(); const values = new FormData(event.currentTarget); send({ kind: "article", action: "intake", sourceUrl: values.get("sourceUrl"), title: values.get("title"), gameId: values.get("gameSlug"), releaseDate: values.get("sourceDate"), factCheckedAt: values.get("factCheckedAt"), gamerTakeaway: values.get("gamerTakeaway"), retrospective: values.get("retrospective") === "on", value: values.get("summary") }); }}>
         <input name="sourceUrl" type="url" placeholder="Official announcement URL" required />
         <input name="title" placeholder="Factual article title" required />
         <input name="gameSlug" placeholder="Published game slug (for example: lost-ark)" required />
         <label>Source date<input name="sourceDate" type="date" required /></label>
         <label>Fact-check date<input name="factCheckedAt" type="date" required /></label>
-        <textarea name="summary" rows={7} placeholder="120–180 word factual, human-reviewed draft. Use only claims supported by the official source." required />
+        <label><input name="retrospective" type="checkbox" /> Retrospective — official update from the last 60 days</label>
+        <textarea name="gamerTakeaway" rows={2} placeholder="Why this still matters to players (required for retrospective coverage)." />
+        <textarea name="summary" rows={7} placeholder="120–180 words for current coverage; 140–220 words for retrospective coverage. Use only claims supported by the official source." required />
         <button className="director-console-primary" disabled={busy}>Create private intake candidate</button>
       </form>
     </section>
@@ -149,7 +154,8 @@ export default function Console({ role, articles, games, sources, runs, audits, 
     <section className="director-console-section">
       <h2>Review next: articles</h2>
       <p className="director-console-helper">Only complete, current, source-approved article packets appear here. Recommendation: confirm, then approve or hold.</p>
-      <div className="director-console-grid">{reviewNext.length ? reviewNext.map((article) => <article className="director-console-card" key={article.id}><small>{(article.recommendation || "edit").toUpperCase()} · {sourceHost(article.sourceUrl)}</small><h3>{article.title}</h3><p>Related game: {article.relatedGame || "Not recorded"} · Source date: {article.sourceDate?.slice(0, 10) || "Missing"}</p><p>Gamer takeaway: {article.gamerTakeaway}</p><p>Source, 120–180 word draft, and fact-check date are present. Media will use the labelled MyRPG fallback unless separately approved.</p><div className="director-console-row"><button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(article.id)}`)}>Open source-first packet</button><button disabled={busy} onClick={() => action("article", "approve", article.id)}>Owner approve</button><button disabled={busy} onClick={() => action("article", "archive", article.id)}>Hold / archive</button></div></article>) : <div className="director-console-empty">No complete official announcement packets are ready. Create one only from a recent approved official announcement.</div>}</div>
+      <label className="director-console-helper">Review filter <select value={articleFilter} onChange={(event) => setArticleFilter(event.target.value as "all" | "retrospective")}><option value="all">All review-ready articles</option><option value="retrospective">Retrospective — last 60 days</option></select></label>
+      <div className="director-console-grid">{filteredReviewNext.length ? filteredReviewNext.map((article) => <article className="director-console-card" key={article.id}><small>{article.retrospective ? "RETROSPECTIVE · " : ""}{(article.recommendation || "edit").toUpperCase()} · {sourceHost(article.sourceUrl)}</small><h3>{article.title}</h3><p>Related game: {article.relatedGame || "Not recorded"} · Originally announced: {article.sourceDate?.slice(0, 10) || "Missing"}</p><p>Proposed MyRPG publication: only after Owner approval · Gamer takeaway: {article.gamerTakeaway}</p><p>Source, {article.retrospective ? "140–220" : "120–180"} word draft, and fact-check date are present. Media will use the labelled MyRPG fallback unless separately approved.</p><div className="director-console-row"><button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(article.id)}`)}>Open source-first packet</button><button disabled={busy} onClick={() => action("article", "approve", article.id)}>Owner approve</button><button disabled={busy} onClick={() => action("article", "archive", article.id)}>Hold / archive</button></div></article>) : <div className="director-console-empty">No matching complete article packets are ready.</div>}</div>
     </section>
 
     <section className="director-console-section">
