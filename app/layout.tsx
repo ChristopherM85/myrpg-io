@@ -5,7 +5,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://myrpg.io"),
   title: "MyRPG.IO — MMO intelligence, human approved",
   description: "A trustworthy MMO news, discovery, and game directory experience.",
-  icons: { icon: "/favicon.svg" },
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   openGraph: { title: "MyRPG.IO", description: "MMO intelligence, human-approved.", images: ["/og.png"] },
   twitter: { card: "summary_large_image", title: "MyRPG.IO", description: "MMO intelligence, human-approved.", images: ["/og.png"] },
 };
