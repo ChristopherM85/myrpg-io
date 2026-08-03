@@ -1,6 +1,6 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, editorialPlans, gameTimelineEvents, games, mediaAssets, publicCorrections, reviewDecisions, searchEngineStatuses, siteSettings, sourceCache, sources, sourceWatchlist, users } from "../../../../db/schema";
+import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, editorialPlans, gameTimelineEvents, games, mediaAssets, publicCorrections, reviewDecisions, searchEngineStatuses, siteSettings, sourceCache, sourceEvidencePackets, sources, sourceWatchlist, users } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 const stamp = () => new Date().toISOString();
@@ -47,7 +47,7 @@ async function audit(db: ReturnType<typeof getDb>, email: string, action: string
 export async function POST(request: Request) {
   const identity = await actor();
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const body = await request.json() as { kind?: string; action?: string; id?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; multiplayerType?:string; worldModel?:string; lifecycleStatus?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string; engine?:string; propertyUrl?:string; verificationStatus?:string; sitemapStatus?:string; proposedDate?:string; contentType?:string; recordId?:string; relatedGame?:string; reviewStatus?:string; mediaStatus?:string; blocker?:string; explanation?:string; eventType?:string; eventDate?:string; citation?:string; confidence?:string; calendarItemId?:string; correctionType?:string; targetType?:string; targetId?:string; summary?:string; reason?:string };
+  const body = await request.json() as { kind?: string; action?: string; id?: string; evidenceId?: string; taxonomyField?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; multiplayerType?:string; worldModel?:string; lifecycleStatus?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string; engine?:string; propertyUrl?:string; verificationStatus?:string; sitemapStatus?:string; proposedDate?:string; contentType?:string; recordId?:string; relatedGame?:string; reviewStatus?:string; mediaStatus?:string; blocker?:string; explanation?:string; eventType?:string; eventDate?:string; citation?:string; confidence?:string; calendarItemId?:string; correctionType?:string; targetType?:string; targetId?:string; summary?:string; reason?:string };
   const { db, email, role } = identity; const kind = body.kind ?? ""; const time = stamp();
   if (kind === "source_watch") {
     if (role !== "owner") return Response.json({ error: "Only the Owner can add or trigger a source watch." }, { status: 403 });
@@ -67,6 +67,22 @@ export async function POST(request: Request) {
       return Response.json({ ok: true });
     }
     return Response.json({ error: "Unknown source-watch action." }, { status: 400 });
+  }
+  if (kind === "source_evidence") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can decide taxonomy evidence." }, { status: 403 });
+    if (!body.evidenceId || !body.taxonomyField || !["apply", "hold", "reject"].includes(body.action || "")) return Response.json({ error: "Evidence packet, taxonomy field, and decision are required." }, { status: 400 });
+    const packet = (await db.select().from(sourceEvidencePackets).where(eq(sourceEvidencePackets.id, body.evidenceId)).limit(1))[0];
+    if (!packet || packet.status !== "private_review") return Response.json({ error: "Private evidence packet not found." }, { status: 404 });
+    let evidence: any; try { evidence = JSON.parse(packet.evidenceJson); } catch { return Response.json({ error: "Evidence packet is invalid and cannot be applied." }, { status: 409 }); }
+    const supported = evidence?.supported?.[body.taxonomyField];
+    if (body.action === "apply") {
+      if (!supported) return Response.json({ error: "Only a field explicitly supported by this official evidence packet can be applied." }, { status: 409 });
+      const patch = body.taxonomyField === "multiplayer_type" ? { multiplayerType: String(supported), updatedAt: time } : body.taxonomyField === "world_model" ? { worldModel: String(supported), updatedAt: time } : body.taxonomyField === "lifecycle_status" ? { lifecycleStatus: String(supported), updatedAt: time } : null;
+      if (!patch) return Response.json({ error: "Unsupported taxonomy field." }, { status: 400 });
+      await db.update(games).set(patch).where(eq(games.id, packet.gameId));
+    }
+    await audit(db, email, `source_evidence_${body.action}`, "source_evidence", packet.id, { field: body.taxonomyField, supported: supported || null, gameId: packet.gameId });
+    return Response.json({ ok: true });
   }
   if (kind === "search_status") {
     if (role !== "owner") return Response.json({ error: "Only the Owner can record search-console status." }, { status: 403 });
