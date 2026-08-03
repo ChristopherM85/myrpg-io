@@ -63,3 +63,17 @@ test("keeps the MyMafia owner-operated feature separate from editorial coverage"
   assert.match(chrome, /\/network\/mymafia/);
   assert.match(sitemap, /\/network\/mymafia/);
 });
+
+test("keeps game histories and corrections human-approved and publication-gated", async () => {
+  const [schema, game, corrections, actions, sitemap] = await Promise.all([
+    read("db/schema.ts"), read("app/games/[slug]/page.tsx"), read("app/corrections/page.tsx"), read("app/api/admin/actions/route.ts"), read("app/sitemap.ts"),
+  ]);
+  assert.match(schema, /gameTimelineEvents/);
+  assert.match(schema, /publicCorrections/);
+  assert.match(game, /No approved history events yet/);
+  assert.match(game, /eq\(gameTimelineEvents\.published, true\)/);
+  assert.match(corrections, /Human-reviewed and Owner-published/);
+  assert.match(actions, /Only the Owner can make the final timeline decision/);
+  assert.match(actions, /Owner approval is required before publication/);
+  assert.match(sitemap, /corrections\.length/);
+});

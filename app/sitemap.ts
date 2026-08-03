@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { articles, games } from "../db/schema";
+import { articles, games, publicCorrections } from "../db/schema";
 
 const base = "https://myrpg.io";
 export const dynamic = "force-dynamic";
@@ -18,12 +18,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const db = getDb();
-    const [publishedArticles, publishedGames] = await Promise.all([
+    const [publishedArticles, publishedGames, corrections] = await Promise.all([
       db.select().from(articles).where(eq(articles.status, "published")).orderBy(desc(articles.publishedAt)),
       db.select().from(games).where(eq(games.published, true)).orderBy(desc(games.updatedAt)),
+      db.select().from(publicCorrections).where(eq(publicCorrections.published, true)).limit(1),
     ]);
     return [
-      ...makeStatic([...staticPaths, ...(publishedGames.length ? ["/mmo-radar"] : []), ...(publishedArticles.length ? ["/official-updates"] : [])]),
+      ...makeStatic([...staticPaths, ...(publishedGames.length ? ["/mmo-radar"] : []), ...(publishedArticles.length ? ["/official-updates"] : []), ...(corrections.length ? ["/corrections"] : [])]),
       ...publishedArticles.map((article) => ({ url: `${base}/articles/${article.slug}`, lastModified: new Date(article.updatedAt), changeFrequency: "weekly" as const, priority: .8 })),
       ...publishedGames.map((game) => ({ url: `${base}/games/${game.slug}`, lastModified: new Date(game.updatedAt), changeFrequency: "monthly" as const, priority: .7 })),
     ];
