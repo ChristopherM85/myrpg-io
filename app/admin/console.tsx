@@ -10,6 +10,7 @@ const styles = {
   card: "director-console-card",
   row: "director-console-row",
   empty: "director-console-empty",
+  muted: "director-console-helper",
 };
 
 type Item = {
@@ -60,8 +61,8 @@ type LaunchGate = {
   verificationNote: string;
 };
 
-export default function Console({ role, articles, games, sources, runs, audits, media, searchStatuses, editorialPlans, cadence, settings, overview, visualCoverage, launchBatch, health, launchGate }: {
-  role: string; articles: Item[]; games: Item[]; sources: Item[]; runs: Item[]; audits: Item[]; media: Item[]; searchStatuses: SearchStatus[]; editorialPlans: EditorialPlan[]; cadence: { planned: number; ready: number; published: number; blocked: number; stale: number }; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number; artworkGroups?: { graphic: string; label: string; count: number }[]; duplication?: { route: string; graphic: string; label: string; count: number; titles: string[] }[]; items?: { id: string; kind: string; title: string; state: string; graphic: string; recommendation: string; recommendationLabel: string; assetId: string | null; previewHref: string }[] }; launchBatch: { ready: number; correction: number; hold: number }; health: { records: { kind: string; factCheckedAt?: string | null; approvedMedia: boolean; fallback: boolean; valid: boolean }[]; seoIssues: number; approvedSources: number; nextAction: string; seoItems: { name: string; kind: string; issues: string[] }[] }; launchGate: LaunchGate;
+export default function Console({ role, articles, games, sources, sourceWatchlist, runs, audits, media, searchStatuses, editorialPlans, cadence, settings, overview, visualCoverage, launchBatch, health, launchGate }: {
+  role: string; articles: Item[]; games: Item[]; sources: Item[]; sourceWatchlist: { sourceId: string; status: string; lastRequestedAt?: string | null }[]; runs: Item[]; audits: Item[]; media: Item[]; searchStatuses: SearchStatus[]; editorialPlans: EditorialPlan[]; cadence: { planned: number; ready: number; published: number; blocked: number; stale: number }; settings: Settings; overview: { articles: number; games: number; calendar: number; published: number }; visualCoverage: { approved: number; fallback: number; pending: number; metadata: number; artworkGroups?: { graphic: string; label: string; count: number }[]; duplication?: { route: string; graphic: string; label: string; count: number; titles: string[] }[]; items?: { id: string; kind: string; title: string; state: string; graphic: string; recommendation: string; recommendationLabel: string; assetId: string | null; previewHref: string }[] }; launchBatch: { ready: number; correction: number; hold: number }; health: { records: { kind: string; factCheckedAt?: string | null; approvedMedia: boolean; fallback: boolean; valid: boolean }[]; seoIssues: number; approvedSources: number; nextAction: string; seoItems: { name: string; kind: string; issues: string[] }[] }; launchGate: LaunchGate;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -81,6 +82,12 @@ export default function Console({ role, articles, games, sources, runs, audits, 
   const action = (kind: string, actionName: string, id?: string, value?: string | boolean | number) => send({ kind, action: actionName, id, value });
   const sourceHost = (value?: string) => { try { return new URL(value || "").hostname; } catch { return value || "Source missing"; } };
   const reviewNext = articles.filter((article) => article.status === "review" && !article.title?.startsWith("Simulation:") && article.title && article.summary && article.summary.trim().split(/\s+/).length >= 120 && article.sourceUrl && article.factCheckedAt);
+  const intakeGroups = {
+    ready: reviewNext,
+    correction: articles.filter((article) => article.status === "review" && !reviewNext.some((ready) => ready.id === article.id)),
+    blocked: editorialPlans.filter((plan) => plan.status === "blocked"),
+    duplicate: articles.filter((article) => article.title?.startsWith("Simulation:")),
+  };
   const [articleFilter, setArticleFilter] = useState<"all" | "retrospective">("all");
   const filteredReviewNext = articleFilter === "retrospective" ? reviewNext.filter((article) => article.retrospective) : reviewNext;
   const [freshnessDays, setFreshnessDays] = useState(30);
@@ -89,6 +96,7 @@ export default function Console({ role, articles, games, sources, runs, audits, 
   const staleFacts = health.records.filter((record) => !record.factCheckedAt || Date.parse(record.factCheckedAt) < cutoff).length;
   const fallbackRecords = health.records.filter((record) => record.fallback).length;
   const searchFor = (engine: string) => searchStatuses.find((item) => item.engine === engine);
+  const watchFor = (sourceId: string) => sourceWatchlist.find((item) => item.sourceId === sourceId);
   const plannedWeeks = editorialPlans.reduce<Record<string, EditorialPlan[]>>((groups, plan) => { const date = new Date(`${plan.proposedDate}T00:00:00Z`); const day = date.getUTCDay(); date.setUTCDate(date.getUTCDate() - ((day + 6) % 7)); const key = date.toISOString().slice(0, 10); (groups[key] ||= []).push(plan); return groups; }, {});
 
   return <main className="director-console">
@@ -109,6 +117,17 @@ export default function Console({ role, articles, games, sources, runs, audits, 
       <div className="director-console-grid"><article className="director-console-card"><small>ARTICLES READY / IN REVIEW</small><h3>{overview.articles}</h3><p>Blocked until source, fact check, duplicate record, word count, and Owner decision all pass.</p>{reviewNext[0] && <button onClick={() => window.location.assign(`/admin/preview/article/${encodeURIComponent(reviewNext[0].id)}`)}>Review next article</button>}</article><article className="director-console-card"><small>GAMES READY TO PUBLISH</small><h3>{overview.games}</h3><p>Open Game Management for exact field and source blockers.</p><a href="/admin/games">Open Game Management</a></article><article className="director-console-card"><small>CALENDAR ITEMS READY</small><h3>{overview.calendar}</h3><p>Only approved records with confirmed or estimated dates can proceed.</p><a href="/admin/games">Open calendar review</a></article><article className="director-console-card"><small>RECENT PUBLISHED RECORDS</small><h3>{overview.published}</h3><p>Published records are the only ones visible on public pages.</p><a href="/admin/quality">Run quality report</a></article></div>
       <p><a href="/admin/timeline">Manage private game timelines and public corrections →</a></p>
     </section>
+
+    {role === "owner" && <section className="director-console-section">
+      <h2>Official-source watchlist</h2><p className="director-console-helper">Owner-triggered intake preparation only. A watch request records an audit event but never fetches, schedules, drafts, or publishes content on its own.</p>
+      <div className="director-console-grid">{sources.filter((source) => source.approved).map((source) => { const watch = watchFor(source.id); return <article className="director-console-card" key={source.id}><small>APPROVED OFFICIAL SOURCE</small><h3>{source.label || source.domain}</h3><p>{source.domain} · {watch ? `Watch: ${watch.status}` : "Not watched"}</p><div className="director-console-row"><button disabled={busy || Boolean(watch)} onClick={() => action("source_watch", "watch", source.id)}>Add to watchlist</button>{watch && <button disabled={busy} onClick={() => action("source_watch", "request", source.id)}>Record one-time check</button>}</div></article>; })}</div>
+      <div className="director-console-card" style={{ marginTop: 14 }}><small>AI-ASSISTED EDITORIAL DESKS</small><p><strong>Archive Desk</strong> — launches, expansions, and material history. <strong>Systems Desk</strong> — combat, progression, economy, and platform changes. <strong>Signal Desk</strong> — official announcements and confirmed release windows. <strong>World Atlas Desk</strong> — factual game profiles and multiplayer taxonomy.</p><p>These are transparent MyRPG AI editorial roles, not human journalists. All public publication still requires an Owner decision.</p></div>
+    </section>}
+
+    {role === "owner" && <section className="director-console-section">
+      <h2>Private intake queue</h2><p className="director-console-helper">Source-backed candidates remain private until an Owner approves and publishes them. These groups do not run models or inspect the web.</p>
+      <div className="director-console-grid">{(["ready", "correction", "blocked", "duplicate"] as const).map((group) => <article className="director-console-card" key={group}><small>{group === "ready" ? "READY FOR REVIEW" : group === "correction" ? "NEEDS FACTUAL CORRECTION" : group === "blocked" ? "MISSING OFFICIAL EVIDENCE" : "DUPLICATE / ALREADY COVERED"}</small><h3>{intakeGroups[group].length}</h3>{intakeGroups[group].slice(0, 3).map((item: any) => <p key={item.id}><strong>{item.title}</strong><br />{item.sourceUrl ? sourceHost(item.sourceUrl) : item.blocker || "No record supplied"}</p>)}</article>)}</div>
+    </section>}
 
     {role === "owner" && <section className="director-console-section">
       <h2>Launch checklist</h2><p className="director-console-helper">Read-only D1 summary. It never fetches, schedules, changes records, or spends money.</p>
