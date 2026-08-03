@@ -1,19 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MyRPG.IO">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MyRPG intelligence mark">
   <defs>
-    <linearGradient id="bg" x1="8" y1="6" x2="57" y2="60" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#171f3d"/>
-      <stop offset="1" stop-color="#080b12"/>
+    <linearGradient id="void" x1="5" y1="4" x2="59" y2="61" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#202a54"/>
+      <stop offset=".52" stop-color="#10182e"/>
+      <stop offset="1" stop-color="#060911"/>
     </linearGradient>
-    <linearGradient id="mark" x1="13" y1="18" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#b9fff7"/>
-      <stop offset="0.55" stop-color="#76f5e3"/>
-      <stop offset="1" stop-color="#71bfff"/>
+    <linearGradient id="signal" x1="16" y1="12" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#dcfffb"/>
+      <stop offset=".46" stop-color="#69f5e4"/>
+      <stop offset="1" stop-color="#47a9ff"/>
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)"/>
-  <path d="M3 43 25 21l11 11L58 10v14L36 46 25 35 3 57Z" fill="#7870ff" opacity=".24"/>
-  <path d="M13 45V19h7l12 13 12-13h7v26h-8V31L32 43 21 31v14Z" fill="url(#mark)"/>
-  <path d="M13 49h29" stroke="#76f5e3" stroke-width="3" stroke-linecap="round" opacity=".72"/>
-  <circle cx="51" cy="49" r="4" fill="#d9b970"/>
-  <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="13.25" fill="none" stroke="#76f5e3" stroke-opacity=".32" stroke-width="1.5"/>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#void)"/>
+  <path d="M32 7 38 19l13 2-9 10 2 14-12-6-12 6 2-14-9-10 13-2Z" fill="#6c63ff" opacity=".2"/>
+  <circle cx="32" cy="32" r="19" fill="none" stroke="#77f6e5" stroke-opacity=".3" stroke-width="2"/>
+  <path d="M32 14 44 32 32 50 20 32Z" fill="none" stroke="url(#signal)" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M32 20v24M20 32h24" stroke="url(#signal)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="5" fill="#d9b970"/>
+  <circle cx="49" cy="15" r="3" fill="#d9b970"/>
+  <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="15.25" fill="none" stroke="#9cfff4" stroke-opacity=".48" stroke-width="1.5"/>
 </svg>

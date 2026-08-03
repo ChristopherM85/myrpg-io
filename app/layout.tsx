@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
     apple: "/favicon.svg",
   },
+  themeColor: "#0b1020",
   openGraph: { title: "MyRPG.IO", description: "MMO intelligence, human-approved.", images: ["/og.png"] },
   twitter: { card: "summary_large_image", title: "MyRPG.IO", description: "MMO intelligence, human-approved.", images: ["/og.png"] },
 };
