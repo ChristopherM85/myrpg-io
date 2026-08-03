@@ -56,7 +56,7 @@ export default async function OfficialUpdates() {
     groups.set(key, [...(groups.get(key) || []), entry]);
   }
 
-  return <PublicPage>
+  return <PublicPage className="official-updates-page">
     <nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/news">News</a> / Official updates</nav>
     <p style={eyebrow}>MYRPG / OFFICIAL UPDATES</p>
     <h1 style={heading}>Official updates</h1>
