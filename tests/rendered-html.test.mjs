@@ -51,3 +51,15 @@ test("renders selected game artwork on MMO Radar with approved-media precedence"
   assert.match(radar, /directory-card/);
   assert.match(radar, /themeKey=\{game\.editorialGraphic\}/);
 });
+
+test("keeps the MyMafia owner-operated feature separate from editorial coverage", async () => {
+  const [feature, chrome, sitemap] = await Promise.all([
+    read("app/network/mymafia/page.tsx"), read("app/components/PublicChrome.tsx"), read("app/sitemap.ts"),
+  ]);
+  assert.match(feature, /MYRPG NETWORK FEATURE/);
+  assert.match(feature, /owner-operated/);
+  assert.match(feature, /not an independent editorial review/);
+  assert.doesNotMatch(feature, /NewsArticle/);
+  assert.match(chrome, /\/network\/mymafia/);
+  assert.match(sitemap, /\/network\/mymafia/);
+});
