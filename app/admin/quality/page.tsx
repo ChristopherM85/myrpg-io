@@ -43,6 +43,7 @@ export default async function QualityPage() {
     for (const event of timelineRows) { const prefix = `timeline ${event.title}`; if (timelineFingerprints.has(event.fingerprint)) issues.push(`${prefix}: duplicate fingerprint`); timelineFingerprints.add(event.fingerprint); if (!event.factCheckedAt) issues.push(`${prefix}: missing fact-check date`); if (!event.eventDate || !["confirmed","estimated","unconfirmed"].includes(event.dateConfidence)) issues.push(`${prefix}: unsupported event date or confidence`); try { if (!approvedDomains.has(new URL(event.sourceUrl).hostname.toLowerCase().replace(/^www\./,""))) issues.push(`${prefix}: source domain is not approved`); } catch { issues.push(`${prefix}: source URL is invalid`); } if (event.articleId && !(await db.select().from(articles).where(eq(articles.id,event.articleId)).limit(1))[0]) issues.push(`${prefix}: broken article relationship`); if (event.calendarItemId && !(await db.select().from(calendarItems).where(eq(calendarItems.id,event.calendarItemId)).limit(1))[0]) issues.push(`${prefix}: broken calendar relationship`); }
     for (const game of allGames) {
       const prefix = game.published ? game.name : `${game.name} (review candidate)`;
+      const liveService = ["live_service_multiplayer", "battle_royale_seasonal", "large_scale_online_action", "upcoming_online_multiplayer", "mmo_shooter", "mmo_survival", "mmo_strategy"].includes(game.coverageLane || "");
       if (game.published && !game.status) issues.push(`${prefix}: MMO Radar status is missing`);
       if (game.published && !game.platforms) issues.push(`${prefix}: MMO Radar platform field is missing`);
       if (game.published && !game.releaseDateConfidence) issues.push(`${prefix}: MMO Radar release confidence is missing`);
@@ -57,6 +58,14 @@ export default async function QualityPage() {
       const normalizedSource = normalized(game.sourceUrl); if (!normalizedSource) issues.push(`${prefix}: normalized official source URL is missing or invalid`); else if (gameSourceUrls.has(normalizedSource)) issues.push(`${prefix}: duplicate normalized source URL also used by ${gameSourceUrls.get(normalizedSource)}`); else gameSourceUrls.set(normalizedSource, game.name);
       if (!game.published && game.reviewStatus !== "approved") issues.push(`${prefix}: Owner review decision is still required`);
       if (game.published && !timelineRows.some((event) => event.gameId === game.id && event.published)) issues.push(`${prefix}: no published game-history timeline coverage`);
+      if (liveService) {
+        if (!game.multiplayerType) issues.push(`${prefix}: Live Service Desk multiplayer category is missing`);
+        if (!game.lifecycleStatus) issues.push(`${prefix}: Live Service Desk lifecycle status is missing`);
+        if (!game.platforms) issues.push(`${prefix}: Live Service Desk platform field is missing`);
+        if (!game.releaseDateConfidence) issues.push(`${prefix}: Live Service Desk official date/window confidence is missing`);
+        if (!game.factCheckedAt) issues.push(`${prefix}: Live Service Desk fact-check date is missing`);
+        if (!game.sourceUrl || !game.directorySummary) issues.push(`${prefix}: Live Service Desk needs an approved source and clear separation of confirmed versus planned/seasonal details`);
+      }
     }
     const calendarFingerprints = new Map<string, string>();
     for (const item of await db.select().from(calendarItems)) {
