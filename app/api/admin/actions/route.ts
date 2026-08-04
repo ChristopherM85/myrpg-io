@@ -77,6 +77,8 @@ export async function POST(request: Request) {
     const supported = evidence?.supported?.[body.taxonomyField];
     if (body.action === "apply") {
       if (!supported) return Response.json({ error: "Only a field explicitly supported by this official evidence packet can be applied." }, { status: 409 });
+      const relatedGame = (await db.select().from(games).where(eq(games.id, packet.gameId)).limit(1))[0];
+      if (!relatedGame) return Response.json({ error: "This is prospective evidence only. Create and review a separate game record before applying a field." }, { status: 409 });
       const patch = body.taxonomyField === "multiplayer_type" ? { multiplayerType: String(supported), updatedAt: time } : body.taxonomyField === "world_model" ? { worldModel: String(supported), updatedAt: time } : body.taxonomyField === "lifecycle_status" ? { lifecycleStatus: String(supported), updatedAt: time } : null;
       if (!patch) return Response.json({ error: "Unsupported taxonomy field." }, { status: 400 });
       await db.update(games).set(patch).where(eq(games.id, packet.gameId));
