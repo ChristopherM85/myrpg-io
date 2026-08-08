@@ -59,7 +59,7 @@ export default function MyMafiaNetworkFeature() {
             <p className="network-feature-gameplay-note">The feature uses official owner-supplied visuals only. Player lists, leaderboards, and third-party game artwork are intentionally not used here.</p>
           </div>
           <figure className="network-feature-screenshot">
-            <Image src="/mymafia/gameplay-street-crimes-mobile.png" width={392} height={1073} sizes="(max-width: 760px) calc(100vw - 76px), 392px" alt="Owner-supplied MyMafia public-beta screenshot showing the Street Crimes interface with available opportunities and stated odds." />
+            <Image src="/mymafia/gameplay-street-crimes-mobile.png" width={392} height={1073} sizes="(max-width: 760px) calc(100vw - 76px), 392px" alt="Owner-supplied MyMafia public-beta screenshot showing the Street Crimes interface with available opportunities and stated odds." unoptimized />
             <figcaption>Owner-supplied MyMafia gameplay screenshot &mdash; public-beta interface; shown for product illustration, not an independent review.</figcaption>
           </figure>
         </section>
