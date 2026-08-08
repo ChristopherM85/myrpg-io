@@ -49,6 +49,16 @@ export async function POST(request: Request) {
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
   const body = await request.json() as { kind?: string; action?: string; id?: string; evidenceId?: string; taxonomyField?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; multiplayerType?:string; worldModel?:string; lifecycleStatus?:string; coverageLane?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string; engine?:string; propertyUrl?:string; verificationStatus?:string; sitemapStatus?:string; proposedDate?:string; contentType?:string; recordId?:string; relatedGame?:string; reviewStatus?:string; mediaStatus?:string; blocker?:string; explanation?:string; eventType?:string; eventDate?:string; citation?:string; confidence?:string; calendarItemId?:string; correctionType?:string; targetType?:string; targetId?:string; summary?:string; reason?:string };
   const { db, email, role } = identity; const kind = body.kind ?? ""; const time = stamp();
+  if (kind === "daily_editorial") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can control the daily AI editorial workflow." }, { status: 403 });
+    const enabled = body.action === "enable" ? true : body.action === "disable" ? false : null;
+    if (enabled === null) return Response.json({ error: "Choose enable or disable for the daily workflow." }, { status: 400 });
+    const rows = await db.select().from(budgetPolicies).limit(1); const policyId = rows[0]?.id ?? "primary";
+    if (!rows[0]) await db.insert(budgetPolicies).values({ id: policyId, dailyLimitCents: 1000, perJobLimitCents: 250, liveAgentsEnabled: enabled, emergencyStop: !enabled, createdAt: time, updatedAt: time });
+    else await db.update(budgetPolicies).set({ dailyLimitCents: 1000, perJobLimitCents: 250, liveAgentsEnabled: enabled, emergencyStop: !enabled, updatedAt: time }).where(eq(budgetPolicies.id, policyId));
+    await audit(db, email, enabled ? "daily_editorial_enabled" : "daily_editorial_disabled", "daily_editorial", policyId, { dailyCapCents: 1000, perSlotCapCents: 250, privateOnly: true, autoPublish: false });
+    return Response.json({ ok: true });
+  }
   if (kind === "source_watch") {
     if (role !== "owner") return Response.json({ error: "Only the Owner can add or trigger a source watch." }, { status: 403 });
     if (!body.id) return Response.json({ error: "Approved source required." }, { status: 400 });
@@ -262,6 +272,7 @@ export async function POST(request: Request) {
     await audit(db, email, `source_${body.action}`, "source", body.id); return Response.json({ ok: true });
   }
   if (kind === "settings") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can change site settings." }, { status: 403 });
     const settings = await db.select().from(siteSettings).limit(1); const settingId = settings[0]?.id ?? "primary";
     if (!settings[0]) await db.insert(siteSettings).values({ id: settingId, simulationMode: true, networkPromotionsEnabled: true, createdAt: time, updatedAt: time });
     const patch = body.action === "promotion" ? { networkPromotionsEnabled: Boolean(body.value), updatedAt: time } : body.action === "simulation" ? { simulationMode: Boolean(body.value), updatedAt: time } : {};
@@ -269,6 +280,7 @@ export async function POST(request: Request) {
     await audit(db, email, `settings_${body.action}`, "settings", settingId, { value: body.value }); return Response.json({ ok: true });
   }
   if (kind === "budget") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can change budget policy." }, { status: 403 });
     const rows = await db.select().from(budgetPolicies).limit(1); const policyId = rows[0]?.id ?? "primary";
     if (!rows[0]) await db.insert(budgetPolicies).values({ id: policyId, createdAt: time, updatedAt: time });
     const safe = Math.max(0, Math.min(100000, Number(body.value) || 0));
