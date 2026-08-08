@@ -47,8 +47,27 @@ async function audit(db: ReturnType<typeof getDb>, email: string, action: string
 export async function POST(request: Request) {
   const identity = await actor();
   if (!identity) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const body = await request.json() as { kind?: string; action?: string; id?: string; evidenceId?: string; taxonomyField?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; multiplayerType?:string; worldModel?:string; lifecycleStatus?:string; coverageLane?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string; engine?:string; propertyUrl?:string; verificationStatus?:string; sitemapStatus?:string; proposedDate?:string; contentType?:string; recordId?:string; relatedGame?:string; reviewStatus?:string; mediaStatus?:string; blocker?:string; explanation?:string; eventType?:string; eventDate?:string; citation?:string; confidence?:string; calendarItemId?:string; correctionType?:string; targetType?:string; targetId?:string; summary?:string; reason?:string };
+  const body = await request.json() as { kind?: string; action?: string; id?: string; evidenceId?: string; taxonomyField?: string; value?: string | boolean | number; label?: string; domain?: string; note?: string; feedUrl?: string; articleId?:string; assetUrl?:string; r2Key?:string; sourceUrl?:string; sourceType?:string; credit?:string; rightsNotes?:string; altText?:string; caption?:string; placement?:string; width?:number; height?:number; name?:string; slug?:string; status?:string; platforms?:string; businessModel?:string; combat?:string; setting?:string; focus?:string; activity?:string; timeCommitment?:string; multiplayerType?:string; worldModel?:string; lifecycleStatus?:string; coverageLane?:string; releaseDate?:string; releaseDateConfidence?:string; officialUrl?:string; factCheckedAt?:string; directorySummary?:string; sourceConfidence?:string; title?:string; dateLabel?:string; dateConfidence?:string; gameId?:string; retrospective?:boolean; gamerTakeaway?:string; engine?:string; propertyUrl?:string; verificationStatus?:string; sitemapStatus?:string; proposedDate?:string; contentType?:string; recordId?:string; relatedGame?:string; reviewStatus?:string; mediaStatus?:string; blocker?:string; explanation?:string; eventType?:string; eventDate?:string; citation?:string; confidence?:string; calendarItemId?:string; correctionType?:string; targetType?:string; targetId?:string; summary?:string; reason?:string };
   const { db, email, role } = identity; const kind = body.kind ?? ""; const time = stamp();
+  if (kind === "source_feed") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can configure an approved official feed." }, { status: 403 });
+    if (!body.id) return Response.json({ error: "Choose an approved official source." }, { status: 400 });
+    const source = (await db.select().from(sources).where(eq(sources.id, body.id)).limit(1))[0];
+    if (!source?.approved) return Response.json({ error: "An official source must be approved before its feed can be configured." }, { status: 409 });
+    const existing = (await db.select().from(sourceWatchlist).where(eq(sourceWatchlist.sourceId, source.id)).limit(1))[0];
+    if (body.action === "pause") {
+      if (!existing || existing.checkMode !== "approved_feed") return Response.json({ error: "No approved feed is configured for this source." }, { status: 404 });
+      await db.update(sourceWatchlist).set({ status: "hold", updatedAt: time }).where(eq(sourceWatchlist.id, existing.id));
+      await audit(db, email, "approved_feed_paused", "source_feed", existing.id, { source: source.domain });
+      return Response.json({ ok: true });
+    }
+    let feedUrl = ""; try { feedUrl = normalizeUrl(String(body.feedUrl || "")); const host = new URL(feedUrl).hostname.toLowerCase().replace(/^www\./, ""); if (host !== source.domain.toLowerCase().replace(/^www\./, "")) throw new Error("domain mismatch"); } catch { return Response.json({ error: "Use a complete HTTPS feed URL on the selected approved source domain." }, { status: 400 }); }
+    const note = JSON.stringify({ feedUrl, itemLimit: 2, mode: "bounded_daily_rss_atom", privateOnly: true, autoPublish: false });
+    if (existing) await db.update(sourceWatchlist).set({ checkMode: "approved_feed", status: "ready", note, updatedAt: time }).where(eq(sourceWatchlist.id, existing.id));
+    else await db.insert(sourceWatchlist).values({ id: id(), sourceId: source.id, checkMode: "approved_feed", status: "ready", note, createdAt: time, updatedAt: time });
+    await audit(db, email, "approved_feed_configured", "source_feed", source.id, { feedUrl, maxItemsPerDay: 2, privateOnly: true, autoPublish: false });
+    return Response.json({ ok: true });
+  }
   if (kind === "daily_editorial") {
     if (role !== "owner") return Response.json({ error: "Only the Owner can control the daily AI editorial workflow." }, { status: 403 });
     const enabled = body.action === "enable" ? true : body.action === "disable" ? false : null;
