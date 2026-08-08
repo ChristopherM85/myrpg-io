@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { PublicFooter, PublicHeader } from "../../components/PublicChrome";
 
@@ -50,6 +51,19 @@ export default function MyMafiaNetworkFeature() {
       </aside>
 
       <article className="network-feature-body">
+        <section className="network-feature-gameplay" aria-labelledby="mymafia-gameplay-title">
+          <div className="network-feature-gameplay-copy">
+            <p className="network-feature-section-label">INSIDE THE CITY</p>
+            <h2 id="mymafia-gameplay-title">Every move starts with the odds.</h2>
+            <p>Street Crimes is one of MyMafia&rsquo;s in-game systems. Players review the stated chance, rewards, and point outcomes before choosing a move. This owner-supplied public-beta capture illustrates the interface; it is not an independent review or a promise of results.</p>
+            <p className="network-feature-gameplay-note">The feature uses official owner-supplied visuals only. Player lists, leaderboards, and third-party game artwork are intentionally not used here.</p>
+          </div>
+          <figure className="network-feature-screenshot">
+            <Image src="/mymafia/gameplay-street-crimes-mobile.png" width={392} height={1073} sizes="(max-width: 760px) calc(100vw - 76px), 392px" alt="Owner-supplied MyMafia public-beta screenshot showing the Street Crimes interface with available opportunities and stated odds." />
+            <figcaption>Owner-supplied MyMafia gameplay screenshot &mdash; public-beta interface; shown for product illustration, not an independent review.</figcaption>
+          </figure>
+        </section>
+
         <section>
           <p className="network-feature-section-label">THE LONG GAME</p>
           <h2>A city that remembers what you did</h2>
