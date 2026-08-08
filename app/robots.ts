@@ -1,2 +1,22 @@
 import type { MetadataRoute } from "next";
-export default function robots(): MetadataRoute.Robots { return { rules: [{ userAgent: "*", allow: ["/"], disallow: ["/admin", "/api", "/preview", "/search"] }], sitemap: "https://myrpg.io/sitemap.xml" }; }
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: ["/"],
+        disallow: [
+          "/admin/",
+          "/api/",
+          "/draft/",
+          "/intake/",
+          "/preview/",
+          "/review/",
+          "/search/",
+        ],
+      },
+    ],
+    sitemap: "https://myrpg.io/sitemap.xml",
+  };
+}
