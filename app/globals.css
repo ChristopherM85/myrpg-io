@@ -117,7 +117,7 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,
 @media(max-width:760px){.public-page section article,.news-editorial-card{border-radius:13px!important}.news-editorial-card>p:first-child,.news-editorial-card>h2,.news-editorial-card>p:not(:first-child),.news-editorial-card>small{padding-right:22px!important;padding-left:22px!important}.public-page .editorial-visual,.public-page .editorial-visual-frame{border-radius:10px}}
 
 /* Compact editorial art is intentionally quiet in discovery cards; full profiles retain credits and context. */
-.editorial-visual-card{margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.editorial-visual-card{display:block!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
 .editorial-visual-card .editorial-visual-frame{min-height:0!important;aspect-ratio:16/10;border-radius:12px!important;background:#101827}
 .editorial-visual-card .editorial-visual-frame>div{background:linear-gradient(180deg,transparent 35%,rgba(4,7,12,.28))}
 .game-directory-grid{gap:18px!important}
