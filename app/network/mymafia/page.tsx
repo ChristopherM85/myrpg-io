@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PublicFooter, PublicHeader } from "../../components/PublicChrome";
 
 export const metadata: Metadata = {
@@ -10,13 +11,13 @@ export const metadata: Metadata = {
     url: "https://myrpg.io/network/mymafia",
     title: "MyMafia.io: A Persistent Noir Strategy MMORPG",
     description: "A clearly labelled MyRPG Network Feature about the owner-operated browser strategy MMORPG MyMafia.io.",
-    images: [{ url: "/editorial/browser-strategy-intelligence.png", width: 1600, height: 900, alt: "Original MyRPG noir strategy editorial artwork with a stylized city map and tactical markers; not gameplay" }],
+    images: [{ url: "/mymafia/city-hero.webp", width: 1806, height: 871, alt: "Official MyMafia city artwork showing a rain-soaked noir waterfront and skyline" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "MyMafia.io: A Persistent Noir Strategy MMORPG",
     description: "A clearly labelled MyRPG Network Feature about the owner-operated browser strategy MMORPG MyMafia.io.",
-    images: ["/editorial/browser-strategy-intelligence.png"],
+    images: ["/mymafia/city-hero.webp"],
   },
 };
 
@@ -27,10 +28,10 @@ export default function MyMafiaNetworkFeature() {
   return <>
     <PublicHeader />
     <main id="main-content" className="network-feature-page">
-      <nav aria-label="Breadcrumb" className="network-feature-breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/advertising-disclosure">Network disclosure</a><span aria-hidden="true">/</span><span>MyMafia.io</span></nav>
+      <nav aria-label="Breadcrumb" className="network-feature-breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><Link href="/advertising-disclosure">Network disclosure</Link><span aria-hidden="true">/</span><span>MyMafia.io</span></nav>
 
       <header className="network-feature-hero">
-        <div className="network-feature-hero-art" role="img" aria-label="Original MyRPG noir strategy editorial artwork with a stylized city map and tactical markers; not gameplay" />
+        <div className="network-feature-hero-art" role="img" aria-label="Official MyMafia city artwork showing a rain-soaked noir waterfront and skyline" />
         <div className="network-feature-hero-copy">
           <p className="network-feature-kicker">MYRPG NETWORK FEATURE · OWNER-OPERATED</p>
           <h1>Earn your reputation.<br /><em>Keep an alibi.</em></h1>
@@ -39,13 +40,13 @@ export default function MyMafiaNetworkFeature() {
             <a className="network-feature-primary" href={playUrl} rel="sponsored">Register for the public beta <span aria-hidden="true">→</span></a>
             <a className="network-feature-secondary" href={`${officialUrl}/how-to-play`} target="_blank" rel="noopener sponsored">Read the official game guide</a>
           </div>
-          <p className="network-feature-caption">MyRPG editorial graphic — not gameplay.</p>
+          <p className="network-feature-caption">Official MyMafia city artwork — owner-operated network feature, not gameplay footage.</p>
         </div>
       </header>
 
       <aside className="network-feature-disclosure" aria-label="Ownership and editorial disclosure">
         <strong>Ownership disclosure</strong>
-        <p>MyMafia.io is operated by the owner of MyRPG.IO. This is a clearly labelled MyRPG Network Feature, not an independent editorial review, rating, or recommendation. Game facts below are sourced from the official MyMafia website and were checked on August 3, 2026.</p>
+        <p>MyMafia.io is operated by the owner of MyRPG.IO. This is a clearly labelled MyRPG Network Feature, not an independent editorial review, rating, or recommendation. The lead visual is owner-supplied MyMafia artwork; game facts below are sourced from the official MyMafia website and were checked on August 3, 2026.</p>
       </aside>
 
       <article className="network-feature-body">
