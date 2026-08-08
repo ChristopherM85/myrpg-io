@@ -98,6 +98,9 @@ export default function Console({ role, articles, games, sources, sourceWatchlis
   const searchFor = (engine: string) => searchStatuses.find((item) => item.engine === engine);
   const watchFor = (sourceId: string) => sourceWatchlist.find((item) => item.sourceId === sourceId);
   const plannedWeeks = editorialPlans.reduce<Record<string, EditorialPlan[]>>((groups, plan) => { const date = new Date(`${plan.proposedDate}T00:00:00Z`); const day = date.getUTCDay(); date.setUTCDate(date.getUTCDate() - ((day + 6) % 7)); const key = date.toISOString().slice(0, 10); (groups[key] ||= []).push(plan); return groups; }, {});
+  const approvalCount = reviewNext.length + overview.games + overview.calendar;
+  const informationCount = launchBatch.correction + launchBatch.hold + cadence.blocked + health.seoIssues;
+  const operationalCount = overview.published + launchGate.freshness.current;
 
   return <main className="director-console">
     <header className="director-console-header">
@@ -111,6 +114,11 @@ export default function Console({ role, articles, games, sources, sourceWatchlis
       </div>
       {message && <p className="director-console-message">{message}</p>}
     </header>
+
+    <section className="director-console-section director-console-signal">
+      <h2>Owner action signal</h2><p className="director-console-helper">Red means an Owner decision is required. Yellow means more factual information or remediation is needed. Green means the stored record or route is operational.</p>
+      <div className="director-console-grid"><article className="director-console-card director-console-card-approval"><p className="director-console-status director-console-status-approval">OWNER APPROVAL REQUIRED</p><h3>{approvalCount}</h3><p>Review-ready articles, games, and calendar items waiting for your explicit decision.</p></article><article className="director-console-card director-console-card-information"><p className="director-console-status director-console-status-information">MORE INFORMATION NEEDED</p><h3>{informationCount}</h3><p>Source, fact-check, readiness, or public-metadata issues that need attention before release.</p></article><article className="director-console-card director-console-card-operational"><p className="director-console-status director-console-status-operational">OPERATIONAL</p><h3>{operationalCount}</h3><p>Published or currently fact-checked records that meet their stored operational checks.</p></article></div>
+    </section>
 
     <section className="director-console-section">
       <h2>Publishing overview</h2><p className="director-console-helper">Final publication remains Owner-only. Open the relevant review packet to see the exact readiness checks.</p>
