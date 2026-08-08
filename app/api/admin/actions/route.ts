@@ -1,6 +1,6 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, editorialPlans, gameTimelineEvents, games, mediaAssets, publicCorrections, reviewDecisions, searchEngineStatuses, siteSettings, sourceCache, sourceEvidencePackets, sources, sourceWatchlist, users } from "../../../../db/schema";
+import { agentRuns, articles, auditEvents, budgetPolicies, calendarItems, editorialPlans, gameSubmissions, gameTimelineEvents, games, mediaAssets, publicCorrections, reviewDecisions, searchEngineStatuses, siteSettings, sourceCache, sourceEvidencePackets, sources, sourceWatchlist, users } from "../../../../db/schema";
 import { eq } from "drizzle-orm";
 
 const stamp = () => new Date().toISOString();
@@ -113,6 +113,16 @@ export async function POST(request: Request) {
       await db.update(games).set(patch).where(eq(games.id, packet.gameId));
     }
     await audit(db, email, `source_evidence_${body.action}`, "source_evidence", packet.id, { field: body.taxonomyField, supported: supported || null, gameId: packet.gameId });
+    return Response.json({ ok: true });
+  }
+  if (kind === "game_submission") {
+    if (role !== "owner") return Response.json({ error: "Only the Owner can triage creator submissions." }, { status: 403 });
+    if (!body.id || !["reviewed", "needs_info", "archive"].includes(String(body.action))) return Response.json({ error: "Choose a submission and valid private review status." }, { status: 400 });
+    const submission = (await db.select().from(gameSubmissions).where(eq(gameSubmissions.id, body.id)).limit(1))[0];
+    if (!submission) return Response.json({ error: "Creator submission not found." }, { status: 404 });
+    const status = body.action === "reviewed" ? "reviewed" : body.action === "needs_info" ? "needs_info" : "archived";
+    await db.update(gameSubmissions).set({ status, updatedAt: time }).where(eq(gameSubmissions.id, submission.id));
+    await audit(db, email, `game_submission_${status}`, "game_submission", submission.id, { gameName: submission.gameName, privateOnly: true, noGameCreated: true, noPublish: true });
     return Response.json({ ok: true });
   }
   if (kind === "search_status") {
