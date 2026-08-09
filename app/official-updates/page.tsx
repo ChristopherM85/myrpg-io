@@ -5,6 +5,7 @@ import { ExploreNext } from "../components/ExploreNext";
 import { EditorialVisual } from "../components/EditorialVisual";
 import { PublicPage } from "../components/PublicChrome";
 import { MAYA } from "../components/writers";
+import "./official-updates.css";
 
 export const dynamic = "force-dynamic";
 const base = "https://myrpg.io";
@@ -57,29 +58,30 @@ export default async function OfficialUpdates() {
   }
 
   return <PublicPage className="official-updates-page">
-    <nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/news">News</a> / Official updates</nav>
-    <p style={eyebrow}>MYRPG / OFFICIAL UPDATES</p>
-    <h1 style={heading}>Official updates</h1>
-    <p style={lede}>A chronological timeline of Owner-published MMO coverage with direct approved official sources. It is not a live-monitoring feed.</p>
-    {entries.length ? [...groups.entries()].map(([group, items]) => <section key={group} style={section}>
-      <p style={eyebrow}>{group === "General MMO updates" ? "GENERAL COVERAGE" : "RELATED GAME"}</p>
-      <h2 style={h2}>{group}</h2>
-      <div style={timeline}>{items.map(({ article, intake, related, visual }) => <article key={article.id} style={entryCard}>
-        <p style={{ ...eyebrow, marginTop: 0 }}>{article.retrospective ? "RETROSPECTIVE · " : ""}PUBLISHED {displayDate(article.publishedAt)}</p>
-        <h3 style={h3}><a href={`/articles/${article.slug}`}>{article.title}</a></h3>
-        {related && <p style={muted}><a href={`/games/${related.slug}`}>Related game: {related.name}</a></p>}
-        <EditorialVisual title={article.title} category="Official update" label="Human-reviewed coverage" image={visual} themeKey={article.editorialGraphic} eager={false} />
-        <p style={muted}>{article.summary}</p>
-        <dl style={facts}>
-          <div><dt>Writer</dt><dd><a href={`/writers#${MAYA.slug}`}>{MAYA.name} · {MAYA.title}</a></dd></div>
-          <div><dt>Originally announced</dt><dd>{displayDate(article.sourceDate || intake?.sourceDate)}</dd></div>
-          <div><dt>Fact-check</dt><dd>{displayDate(article.factCheckedAt)}</dd></div>
-          <div><dt>Primary source</dt><dd><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer">Official source ↗</a></dd></div>
-        </dl>
-        <p style={takeaway}><strong>{article.retrospective ? "Why this still matters" : "Gamer takeaway"}:</strong> {article.gamerTakeaway || intake.gamerTakeaway}</p>
-        <a href={`/articles/${article.slug}`} style={accent}>Read the full update →</a>
-      </article>)}</div>
-    </section>) : <section style={empty}><h2>No official updates are published yet</h2><p>MyRPG adds this timeline only after an official source has been reviewed and an Owner has manually published the article.</p><a href="/news" style={accent}>Visit MMO news →</a></section>}
+    <nav aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/news">News</a><span aria-hidden="true">/</span><span>Official updates</span></nav>
+    <header className="updates-hero">
+      <p>MYRPG / OFFICIAL UPDATES</p>
+      <h1>Signals worth<br /><em>stopping for.</em></h1>
+      <div className="updates-hero-signals"><span>OFFICIAL SOURCES</span><span>HUMAN REVIEWED</span><span>CHRONOLOGICAL</span></div>
+      <p className="updates-hero-lede">A clean field journal for material MMO news. Every entry links back to the original official announcement—no rumor feed, no automated publishing.</p>
+    </header>
+    {entries.length ? <div className="updates-stream">{[...groups.entries()].map(([group, items]) => <section className="updates-group" key={group}>
+      <header><div><p>{group === "General MMO updates" ? "GENERAL SIGNAL" : "GAME DOSSIER"}</p><h2>{group}</h2></div><span>{items.length} {items.length === 1 ? "update" : "updates"}</span></header>
+      <ol>{items.map(({ article, intake, related, visual }, index) => <li key={article.id}>
+        <article className={`update-entry ${index === 0 ? "update-entry-latest" : ""}`}>
+          <div className="update-entry-date"><span>{article.retrospective ? "ARCHIVE" : "FIELD NOTE"}</span><time dateTime={article.publishedAt || undefined}>{displayDate(article.publishedAt)}</time></div>
+          <EditorialVisual title={article.title} category="Official update" label="Human-reviewed coverage" image={visual} themeKey={article.editorialGraphic} eager={index === 0} presentation="card" />
+          <div className="update-entry-copy">
+            <p className="update-entry-kicker">{related ? <a href={`/games/${related.slug}`}>{related.name}</a> : "Official MMO coverage"}</p>
+            <h3><a href={`/articles/${article.slug}`}>{article.title}</a></h3>
+            <p className="update-entry-summary">{article.summary}</p>
+            <p className="update-entry-takeaway"><strong>{article.retrospective ? "Why it matters" : "Player takeaway"}</strong>{article.gamerTakeaway || intake.gamerTakeaway}</p>
+            <div className="update-entry-meta"><a href={`/writers#${MAYA.slug}`}>{MAYA.name}</a><span>Announced {displayDate(article.sourceDate || intake?.sourceDate)}</span><span>Checked {displayDate(article.factCheckedAt)}</span><a href={article.sourceUrl} target="_blank" rel="noopener noreferrer">Official source ↗</a></div>
+            <a className="update-entry-read" href={`/articles/${article.slug}`}>Read the full update <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+      </li>)}</ol>
+    </section>)}</div> : <section className="updates-empty"><p>OFFICIAL UPDATES / STANDING BY</p><h2>No field notes are live yet.</h2><p>MyRPG adds an update only after a direct official source is reviewed and an Owner publishes it.</p><a href="/news">Visit MMO news <span aria-hidden="true">→</span></a></section>}
     <ExploreNext links={[{ href: "/news", label: "MMO news", note: "Read source-linked editorial coverage." }, { href: "/mmo-radar", label: "MMO Radar", note: "See factual directory coverage at a glance." }, { href: "/games", label: "Games", note: "Browse human-approved MMO profiles." }, { href: "/calendar", label: "Release calendar", note: "See owner-published date records." }, { href: "/compare", label: "Compare games", note: "Compare visible profile fields." }, { href: "/find-my-mmo", label: "Find My MMO", note: "Match verified fields to your preferences." }]} />
   </PublicPage>;
 }
@@ -89,17 +91,3 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const title = "Official MMO Updates | MyRPG.IO"; const description = "Chronological, source-linked official MMO updates reviewed and published by MyRPG.";
   return { title, description, alternates: { canonical: `${base}/official-updates` }, openGraph: { title, description, url: `${base}/official-updates` }, robots: Object.keys(query).length ? { index: false, follow: true } : { index: true, follow: true } };
 }
-
-const eyebrow = { color: "#76f5e3", fontSize: 11, fontWeight: 800, letterSpacing: 1.5, marginTop: 30 };
-const heading = { fontSize: "clamp(2.8rem,7vw,5.4rem)", letterSpacing: "-.06em", margin: "12px 0" };
-const lede = { color: "#aeb6c7", lineHeight: 1.65, maxWidth: 760, fontSize: 17 };
-const section = { marginTop: 50 };
-const h2 = { fontSize: "clamp(1.7rem,3.2vw,2.4rem)", margin: "8px 0" };
-const timeline = { display: "grid", gap: 16, marginTop: 22 };
-const entryCard = { border: "1px solid #2a3041", borderLeft: "3px solid #76f5e3", background: "#121622", padding: "22px clamp(18px,3vw,30px)" };
-const h3 = { margin: "7px 0 10px", fontSize: "clamp(1.35rem,3vw,2rem)", lineHeight: 1.1 };
-const muted = { color: "#aeb6c7", lineHeight: 1.6, fontSize: 14 };
-const facts = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 12, margin: "20px 0", paddingTop: 16, borderTop: "1px solid #2a3041" };
-const takeaway = { margin: "0 0 18px", paddingLeft: 12, borderLeft: "2px solid #c9a666", color: "#cbd2df", fontSize: 13, lineHeight: 1.55 };
-const accent = { color: "#76f5e3", fontWeight: 800, textDecoration: "none", fontSize: 12 };
-const empty = { borderLeft: "3px solid #c9a666", background: "#101521", padding: "22px", marginTop: 36 };
