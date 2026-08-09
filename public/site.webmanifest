@@ -1,0 +1,12 @@
+{
+  "name": "MyRPG.IO",
+  "short_name": "MyRPG",
+  "description": "MMO intelligence with source-linked, human-reviewed editorial coverage.",
+  "icons": [
+    { "src": "/icon-192.png?v=20260809", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png?v=20260809", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#0b1020",
+  "background_color": "#0b1020",
+  "display": "browser"
+}
