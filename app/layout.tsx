@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./network-access.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://myrpg.io"),

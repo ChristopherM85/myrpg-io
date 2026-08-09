@@ -110,6 +110,8 @@ export default function Console({ role, articles, games, sources, sourceWatchlis
       <h1>Editorial operations</h1>
       <p>Role: <strong>{role}</strong> · Simulation only · Live model calls are off · Publishing is human-controlled.</p>
       <div className="director-console-actions">
+        <a className="director-console-public-link" href="/">View MyRPG.IO <span aria-hidden="true">→</span></a>
+        <a className="director-console-network-link" href="/network/mymafia">View MyMafia feature <span aria-hidden="true">→</span></a>
         <button className="director-console-primary" disabled={busy} onClick={() => send({}, "/api/admin/simulate")}>Create simulation candidate</button>
         <button disabled={busy} onClick={() => action("budget", "stop", undefined, !settings.stop)}>{settings.stop ? "Release emergency stop" : "Emergency stop"}</button>
         <button disabled={busy} onClick={() => action("settings", "promotion", undefined, !settings.promotion)}>{settings.promotion ? "Hide MyMafia placements" : "Show MyMafia placements"}</button>

@@ -7,7 +7,7 @@ export function PublicHeader() {
 }
 
 export function PublicFooter() {
-  return <footer className="public-footer"><div className="public-footer-inner"><p>MyRPG.IO is MMO intelligence with human accountability. Editorial content is source-linked and human-reviewed.</p><nav aria-label="Site information">{[["Official Updates", "/official-updates"], ["MMO Radar", "/mmo-radar"], ["Writers", "/writers"], ["Submit a game", "/submit-game"], ["Editorial Standards", "/editorial-standards"], ["Corrections", "/corrections"], ["AI Transparency", "/ai-transparency"], ["Advertising Disclosure", "/advertising-disclosure"], ["Privacy", "/privacy"]].map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</nav></div></footer>;
+  return <footer className="public-footer"><div className="public-footer-inner"><p>MyRPG.IO is MMO intelligence with human accountability. Editorial content is source-linked and human-reviewed.</p><div className="public-footer-links"><nav aria-label="Site information">{[["Official Updates", "/official-updates"], ["MMO Radar", "/mmo-radar"], ["Writers", "/writers"], ["Submit a game", "/submit-game"], ["Editorial Standards", "/editorial-standards"], ["Corrections", "/corrections"], ["AI Transparency", "/ai-transparency"], ["Advertising Disclosure", "/advertising-disclosure"], ["Privacy", "/privacy"]].map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</nav><nav className="public-footer-network" aria-label="MyRPG network"><span>MYRPG NETWORK</span><Link href="/network/mymafia">MyMafia feature</Link><a href="https://mymafia.io/" target="_blank" rel="noopener sponsored">Play MyMafia ↗</a></nav></div></div></footer>;
 }
 
 export function NetworkFeature() {
