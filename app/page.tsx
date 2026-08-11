@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import { articles, calendarItems, games, mediaAssets, siteSettings } from "../db/schema";
 import { editorialGraphic, publicEditorialAssetUrl } from "./components/editorial-media";
 import { NetworkFeature, PublicFooter, PublicHeader } from "./components/PublicChrome";
+import "./home-news.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "MyRPG.IO — Find your next MMO", description: "Discover MMORPG news, release dates, factual game profiles, comparisons, and personalized MMO matches.", alternates: { canonical: "/" } };

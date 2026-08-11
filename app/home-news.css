@@ -1,0 +1,5 @@
+/* The lead story needs an unambiguous layout at intermediate desktop widths. */
+.home-news-grid>.home-story-featured{isolation:isolate;overflow:hidden}
+.home-news-grid>.home-story-featured .home-card-art,.home-news-grid>.home-story-featured .home-story-body{min-width:0}
+@media(min-width:1101px){.home-news-grid>.home-story-featured{display:grid;grid-template-columns:minmax(340px,.88fr) minmax(0,1.12fr);min-height:310px}.home-news-grid>.home-story-featured .home-card-art{width:auto;height:100%;min-height:310px;aspect-ratio:auto}.home-news-grid>.home-story-featured .home-story-body{padding:clamp(28px,3.6vw,48px)}}
+@media(max-width:1100px){.home-news-grid>.home-story-featured{display:block;min-height:0}.home-news-grid>.home-story-featured .home-card-art{width:100%;height:auto;min-height:0;aspect-ratio:16/8}.home-news-grid>.home-story-featured .home-story-body{padding:clamp(24px,4vw,36px)}.home-news-grid>.home-story-featured h3{font-size:clamp(28px,5vw,44px)}}
