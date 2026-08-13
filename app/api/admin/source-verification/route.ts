@@ -31,8 +31,10 @@ export async function POST(request: Request) {
   if (alreadyVerified) return Response.json({ error: "This discovery lead already has a private official evidence packet." }, { status: 409 });
   let normalizedUrl = ""; try { normalizedUrl = normalize(requestedUrl); } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Invalid official URL." }, { status: 400 }); }
   const path = new URL(normalizedUrl).pathname.toLowerCase(); if (path === "/" || /(?:^|\/)(?:feed|rss|tag|category)(?:\/|$)|\.xml$/i.test(path)) return Response.json({ error: "Use one direct official announcement page, not a homepage, listing, or feed." }, { status: 400 });
-  const officialSource = (await db.select().from(sources).where(eq(sources.domain, host(normalizedUrl))).limit(1))[0];
-  if (!officialSource?.approved || (officialSource.sourceRole || "primary") !== "primary") return Response.json({ error: "The URL must be on an approved primary official source domain." }, { status: 409 });
+  const requestedHost = host(normalizedUrl); const matchedSource = (await db.select().from(sources).where(eq(sources.domain, requestedHost)).limit(1))[0];
+  if (!matchedSource) return Response.json({ error: `${requestedHost} is not in the approved official Source Registry. Add and approve the game’s official developer, publisher, platform, or store domain first.` }, { status: 409 });
+  if (!matchedSource.approved || (matchedSource.sourceRole || "primary") !== "primary") return Response.json({ error: `${requestedHost} is a discovery/news source, not an approved primary official citation source. Do not paste this URL; use a direct developer, publisher, platform, or official-store announcement instead.` }, { status: 409 });
+  const officialSource = matchedSource;
   const duplicate = (await db.select().from(sourceVerificationPackets).where(eq(sourceVerificationPackets.normalizedUrl, normalizedUrl)).limit(1))[0];
   if (duplicate) return Response.json({ error: "That official announcement already has a private verification packet." }, { status: 409 });
   const timestamp = now();
