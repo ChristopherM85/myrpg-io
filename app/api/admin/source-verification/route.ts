@@ -21,9 +21,9 @@ export async function POST(request: Request) {
   if (!leadRunId) return Response.json({ error: "Choose a private discovery lead first." }, { status: 400 });
   const lead = (await db.select().from(agentRuns).where(and(eq(agentRuns.id, leadRunId), eq(agentRuns.status, "verification_lead"))).limit(1))[0];
   if (!lead) return Response.json({ error: "That private discovery lead is unavailable." }, { status: 404 });
-  if (body.action === "hold") {
-    const timestamp = now(); await db.update(agentRuns).set({ stoppedReason: "Owner kept this discovery lead private pending a direct official source.", updatedAt: timestamp }).where(eq(agentRuns.id, lead.id));
-    await db.insert(auditEvents).values({ id: id(), actorEmail: identity.email, action: "discovery_lead_held", entityType: "source_verification", entityId: lead.id, details: JSON.stringify({ privateOnly: true, reason: "Owner deferred official-source verification." }), createdAt: timestamp });
+  if (body.action === "archive") {
+    const timestamp = now(); await db.update(agentRuns).set({ status: "verification_lead_archived", stoppedReason: "Owner removed an unsupported discovery lead from the active research inbox.", updatedAt: timestamp }).where(eq(agentRuns.id, lead.id));
+    await db.insert(auditEvents).values({ id: id(), actorEmail: identity.email, action: "discovery_lead_archived", entityType: "source_verification", entityId: lead.id, details: JSON.stringify({ privateOnly: true, reason: "No direct official source is available for this discovery lead." }), createdAt: timestamp });
     return Response.json({ ok: true });
   }
   if (!requestedUrl) return Response.json({ error: "Paste one direct official announcement URL to verify this lead." }, { status: 400 });
