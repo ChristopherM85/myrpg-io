@@ -38,7 +38,7 @@ export default function GameManager({ role, games, sources, calendarItems }: { r
     const response = await fetch("/api/admin/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const result = await response.json(); setMessage(result.error || "Saved. Refreshing…"); if (result.ok) setTimeout(() => location.reload(), 500);
   };
-  const approvedDomains = useMemo(() => new Set(sources.filter((source) => source.approved).map((source) => String(source.domain).toLowerCase())), [sources]);
+  const approvedDomains = useMemo(() => new Set(sources.filter((source) => source.approved && (source.sourceRole || "primary") === "primary").map((source) => String(source.domain).toLowerCase())), [sources]);
   const candidates = games.filter((game) => !game.published && game.reviewStatus !== "archived");
   const filteredGames = candidates.filter((game) => {
     const blockers = gameBlockers(game, approvedDomains); const hardBlockers = blockers.filter((item) => !item.includes("unconfirmed")); const matcherMissing = !game.activity || !game.timeCommitment;

@@ -32,7 +32,9 @@ const DAILY_DESKS = [
 const iso = () => new Date().toISOString();
 const runDate = (time: number) => new Date(time).toISOString().slice(0, 10);
 const MAX_DAILY_FEEDS = 4;
+const MAX_DAILY_DISCOVERY_FEEDS = 4;
 const MAX_ITEMS_PER_FEED = 2;
+const MAX_DISCOVERY_ITEMS_PER_FEED = 1;
 const MAX_FEED_BYTES = 512_000;
 
 const normalizeFeedUrl = (value: string) => {
@@ -54,8 +56,12 @@ const hash = (value: string) => { let result = 5381; for (let index = 0; index <
 
 async function collectApprovedFeeds(env: Env, scheduledTime: number) {
   const now = iso(); const date = runDate(scheduledTime);
-  const rows = await env.DB.prepare("SELECT w.id AS watch_id, w.source_id AS source_id, w.note AS note, s.domain AS domain FROM source_watchlist w JOIN sources s ON s.id = w.source_id WHERE w.check_mode = 'approved_feed' AND w.status = 'ready' AND s.approved = 1 ORDER BY w.updated_at LIMIT ?1").bind(MAX_DAILY_FEEDS).all<{ watch_id: string; source_id: string; note: string | null; domain: string }>();
+  const rows = await env.DB.prepare("SELECT w.id AS watch_id, w.source_id AS source_id, w.note AS note, w.feed_tier AS feed_tier, s.domain AS domain, s.source_role AS source_role FROM source_watchlist w JOIN sources s ON s.id = w.source_id WHERE w.check_mode = 'approved_feed' AND w.status = 'ready' AND s.approved = 1 AND ((w.feed_tier = 'primary' AND s.source_role = 'primary') OR (w.feed_tier = 'discovery' AND s.source_role = 'discovery')) ORDER BY w.updated_at LIMIT ?1").bind(MAX_DAILY_FEEDS + MAX_DAILY_DISCOVERY_FEEDS).all<{ watch_id: string; source_id: string; note: string | null; feed_tier: "primary" | "discovery"; domain: string; source_role: string }>();
+  let primaryCount = 0; let discoveryCount = 0;
   for (const row of rows.results || []) {
+    const tier = row.feed_tier === "discovery" ? "discovery" : "primary";
+    if ((tier === "primary" && primaryCount >= MAX_DAILY_FEEDS) || (tier === "discovery" && discoveryCount >= MAX_DAILY_DISCOVERY_FEEDS)) continue;
+    if (tier === "primary") primaryCount++; else discoveryCount++;
     let config: { feedUrl?: string } = {}; try { config = JSON.parse(row.note || "{}"); } catch { /* Invalid private configuration is held rather than fetched. */ }
     if (!config.feedUrl) continue;
     let feedUrl = ""; try { feedUrl = normalizeFeedUrl(config.feedUrl); const host = new URL(feedUrl).hostname.toLowerCase().replace(/^www\./, ""); if (host !== row.domain.toLowerCase().replace(/^www\./, "")) throw new Error("domain mismatch"); } catch { continue; }
@@ -68,16 +74,19 @@ async function collectApprovedFeeds(env: Env, scheduledTime: number) {
       while (total <= MAX_FEED_BYTES) { const next = await reader.read(); if (next.done) break; total += next.value.byteLength; chunks.push(next.value); }
       if (total > MAX_FEED_BYTES) throw new Error("Feed exceeded the 512 KB safety limit.");
       const xml = new TextDecoder().decode(concat(chunks, total));
-      for (const item of feedItems(xml)) {
+      const items = feedItems(xml).slice(0, tier === "discovery" ? MAX_DISCOVERY_ITEMS_PER_FEED : MAX_ITEMS_PER_FEED);
+      for (const item of items) {
         let normalized = ""; try { normalized = normalizeFeedUrl(item.url); const host = new URL(normalized).hostname.toLowerCase().replace(/^www\./, ""); if (host !== row.domain.toLowerCase().replace(/^www\./, "")) continue; } catch { continue; }
         const existing = await env.DB.prepare("SELECT id FROM source_cache WHERE normalized_url = ?1 LIMIT 1").bind(normalized).first<{ id: string }>();
         if (existing) continue;
         const cacheId = crypto.randomUUID(); const itemId = `feed:${date}:${hash(normalized)}`;
-        const evidence = { type: "approved_feed_item", title: item.title, sourceUrl: normalized, sourceDate: item.sourceDate || null, sourceId: row.source_id, sourceDomain: row.domain, fetchedAt: now, confidence: item.sourceDate ? "medium" : "low", nextStep: "Owner evidence review required before an AI draft can be prepared." };
+        const evidence = tier === "primary"
+          ? { type: "approved_feed_item", feedTier: "primary", title: item.title, sourceUrl: normalized, sourceDate: item.sourceDate || null, sourceId: row.source_id, sourceDomain: row.domain, fetchedAt: now, confidence: item.sourceDate ? "medium" : "low", nextStep: "Owner evidence review required before an AI draft can be prepared." }
+          : { type: "editorial_discovery_lead", feedTier: "discovery", title: item.title, sourceUrl: normalized, sourceDate: item.sourceDate || null, sourceId: row.source_id, sourceDomain: row.domain, fetchedAt: now, confidence: "lead", discoveryOnly: true, nextStep: "Find and validate a direct approved official source before evidence, drafting, or publication." };
         await env.DB.batch([
           env.DB.prepare("INSERT INTO source_cache (id,normalized_url,content_hash,source_id,last_checked_at,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?5,?5)").bind(cacheId, normalized, hash(`${item.title}|${item.sourceDate}|${normalized}`), row.source_id, now),
-          env.DB.prepare("INSERT INTO agent_runs (id,agent,status,item_id,planned_cost_cents,actual_cost_cents,output_json,stopped_reason,created_at,updated_at) VALUES (?1,'scout','evidence_ready',?2,0,0,?3,NULL,?4,?4)").bind(crypto.randomUUID(), itemId, JSON.stringify(evidence), now),
-          env.DB.prepare("INSERT INTO audit_events (id,actor_email,action,entity_type,entity_id,details,created_at) VALUES (?1,'system@myrpg.io','approved_feed_item_captured','source_feed',?2,?3,?4)").bind(crypto.randomUUID(), row.watch_id, JSON.stringify({ date, sourceId: row.source_id, normalizedUrl: normalized, privateOnly: true, noPublish: true }), now),
+          env.DB.prepare("INSERT INTO agent_runs (id,agent,status,item_id,planned_cost_cents,actual_cost_cents,output_json,stopped_reason,created_at,updated_at) VALUES (?1,'scout',?2,?3,0,0,?4,NULL,?5,?5)").bind(crypto.randomUUID(), tier === "primary" ? "evidence_ready" : "verification_lead", itemId, JSON.stringify(evidence), now),
+          env.DB.prepare("INSERT INTO audit_events (id,actor_email,action,entity_type,entity_id,details,created_at) VALUES (?1,'system@myrpg.io',?2,'source_feed',?3,?4,?5)").bind(crypto.randomUUID(), tier === "primary" ? "approved_feed_item_captured" : "editorial_feed_lead_captured", row.watch_id, JSON.stringify({ date, sourceId: row.source_id, normalizedUrl: normalized, feedTier: tier, privateOnly: true, noPublish: true, noDraft: tier === "discovery" }), now),
         ]);
       }
       await env.DB.prepare("UPDATE source_watchlist SET last_checked_at = ?1, updated_at = ?1 WHERE id = ?2").bind(now, row.watch_id).run();

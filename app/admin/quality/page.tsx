@@ -19,7 +19,7 @@ export default async function QualityPage() {
     const publishedArticles = await db.select().from(articles).where(eq(articles.status, "published"));
     const articleRuns = await db.select().from(agentRuns);
     const publishedGameSlugs = new Set((await db.select().from(games).where(eq(games.published, true))).map((game) => game.slug));
-    const approvedDomains = new Set((await db.select().from(sources)).filter((source) => source.approved).map((source) => source.domain.toLowerCase()));
+    const approvedDomains = new Set((await db.select().from(sources)).filter((source) => source.approved && (source.sourceRole || "primary") === "primary").map((source) => source.domain.toLowerCase()));
     const articleSlugs = new Set<string>();
     for (const article of publishedArticles) {
       if (!article.title.trim()) issues.push(`${article.id}: missing title`);
