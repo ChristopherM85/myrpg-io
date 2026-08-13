@@ -18,9 +18,15 @@ export async function POST(request: Request) {
   const db = getDb(); const account = (await db.select().from(users).where(eq(users.email, identity.email)).limit(1))[0];
   if (account?.role !== "owner") return Response.json({ error: "Only the Owner can verify a discovery lead." }, { status: 403 });
   const body = await request.json().catch(() => ({})); const leadRunId = String(body.leadRunId || ""); const requestedUrl = String(body.officialUrl || "");
-  if (!leadRunId || !requestedUrl) return Response.json({ error: "A private discovery lead and one direct official announcement URL are required." }, { status: 400 });
+  if (!leadRunId) return Response.json({ error: "Choose a private discovery lead first." }, { status: 400 });
   const lead = (await db.select().from(agentRuns).where(and(eq(agentRuns.id, leadRunId), eq(agentRuns.status, "verification_lead"))).limit(1))[0];
   if (!lead) return Response.json({ error: "That private discovery lead is unavailable." }, { status: 404 });
+  if (body.action === "hold") {
+    const timestamp = now(); await db.update(agentRuns).set({ stoppedReason: "Owner kept this discovery lead private pending a direct official source.", updatedAt: timestamp }).where(eq(agentRuns.id, lead.id));
+    await db.insert(auditEvents).values({ id: id(), actorEmail: identity.email, action: "discovery_lead_held", entityType: "source_verification", entityId: lead.id, details: JSON.stringify({ privateOnly: true, reason: "Owner deferred official-source verification." }), createdAt: timestamp });
+    return Response.json({ ok: true });
+  }
+  if (!requestedUrl) return Response.json({ error: "Paste one direct official announcement URL to verify this lead." }, { status: 400 });
   const alreadyVerified = (await db.select().from(sourceVerificationPackets).where(eq(sourceVerificationPackets.leadRunId, lead.id)).limit(1))[0];
   if (alreadyVerified) return Response.json({ error: "This discovery lead already has a private official evidence packet." }, { status: 409 });
   let normalizedUrl = ""; try { normalizedUrl = normalize(requestedUrl); } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Invalid official URL." }, { status: 400 }); }

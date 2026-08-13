@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const LIVE_SERVICE_DOMAINS = new Set(["rockstargames.com", "callofduty.com", "fortnite.com", "battlefield.com", "arcraiders.com"]);
 
-export default function EvidenceReview({ packets, leads, verificationPackets }: { packets: any[]; leads: any[]; verificationPackets: any[] }) {
+export default function EvidenceReview({ packets, leads, verificationPackets, primaryDomains }: { packets: any[]; leads: any[]; verificationPackets: any[]; primaryDomains: string[] }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [lane, setLane] = useState<"all" | "live-service">("all");
@@ -29,23 +29,33 @@ export default function EvidenceReview({ packets, leads, verificationPackets }: 
     finally { setBusy(false); }
   }
 
+  async function holdLead(leadRunId: string) {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/source-verification", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ leadRunId, action: "hold" }) });
+      const result = await response.json(); setMessage(result.error || "Lead kept private for later. Refreshing…"); if (result.ok) setTimeout(() => location.reload(), 500);
+    } catch { setMessage("Unable to update this lead. Please refresh and try again."); } finally { setBusy(false); }
+  }
+
   return <main className="director-console">
     <p className="director-console-kicker">MYRPG / OWNER-ONLY / NOINDEX</p>
     <h1>Evidence review</h1>
-    <p className="director-console-helper">Private official-source evidence only. Applying a field updates just that factual taxonomy field; it never publishes content.</p>
+    <p className="director-console-helper">Private, source-backed evidence only. This page never approves or publishes an article, game, or update.</p>
     <label className="director-console-helper">Evidence lane <select value={lane} onChange={(event) => setLane(event.target.value as "all" | "live-service")}><option value="all">All evidence packets</option><option value="live-service">Live Service &amp; Online Games</option></select></label>
     {message && <p className="director-console-message">{message}</p>}
     <section className="director-console-section">
-      <p className="director-console-kicker">DISCOVERY LEADS / OWNER VERIFICATION</p>
-      <h2>Official-source verification queue</h2>
-      <p className="director-console-helper">A discovery lead is only a private pointer. Paste one direct announcement from an approved primary official domain to create a private evidence packet. This page does not search, draft, classify, or publish.</p>
+      <p className="director-console-kicker">SIMPLE OWNER STEP</p>
+      <h2>Turn a news lead into safe private evidence</h2>
+      <p className="director-console-helper">You are not approving or publishing anything here. Pick a lead, paste the matching publisher/developer announcement, then choose Verify. MyRPG keeps the result private for a later review.</p>
+      <ol className="director-console-helper" style={{ paddingLeft: 20, lineHeight: 1.7 }}><li>Open the lead only to understand the topic.</li><li>Find the matching post on the game’s official developer, publisher, platform, or store site.</li><li>Paste that official page below and choose <strong>Verify official source</strong>.</li></ol>
+      <p className="director-console-helper"><strong>Accepted official domains:</strong> {primaryDomains.length ? primaryDomains.join(" · ") : "none configured yet"}. News sites and the discovery-link URL are not accepted as citations.</p>
       <div className="director-console-grid">{leads.length ? leads.map((lead) => <article className="director-console-card" key={lead.id}>
-        <small>{lead.verified ? "OFFICIAL SOURCE VERIFIED / PRIVATE" : "PRIVATE DISCOVERY LEAD / NEEDS OFFICIAL URL"}</small><h3>{lead.title}</h3>
-        <p>Discovery source: {lead.sourceDomain} · {lead.sourceDate?.slice(0, 10) || "date not supplied"}</p>
-        {lead.sourceUrl && <p><a href={lead.sourceUrl} target="_blank" rel="noreferrer">Open discovery item ↗</a></p>}
-        {lead.verified ? <p className="director-console-helper">Verified against {lead.verified.source?.domain || "an approved official source"}. It remains private and cannot create a draft automatically.</p> : <form className="director-console-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); verifyLead(lead.id, String(form.get("officialUrl") || "")); }}><input name="officialUrl" type="url" placeholder="https://approved-official-site.example/news/announcement" required /><button className="director-console-primary" disabled={busy}>Verify official announcement</button></form>}
+        <small>{lead.verified ? "DONE / PRIVATE OFFICIAL EVIDENCE" : "STEP 1 OF 1 / OFFICIAL LINK NEEDED"}</small><h3>{lead.title}</h3>
+        <p className="director-console-helper">Spotted via {lead.sourceDomain} {lead.sourceDate ? `on ${lead.sourceDate.slice(0, 10)}` : ""}. This is a lead, not a citation.</p>
+        {lead.sourceUrl && <p><a href={lead.sourceUrl} target="_blank" rel="noreferrer">Read the lead ↗</a></p>}
+        {lead.verified ? <p className="director-console-helper">Official page verified on {lead.verified.source?.domain || "an approved official source"}. It remains private; you will review it separately before any content can be prepared.</p> : <form className="director-console-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); verifyLead(lead.id, String(form.get("officialUrl") || "")); }}><label>Official announcement URL <input name="officialUrl" type="url" placeholder="https://publisher.example/news/the-announcement" required /></label><p className="director-console-helper">Use the developer, publisher, platform, or official store page—not a news article, homepage, tag page, or RSS feed.</p><div className="director-console-row"><button className="director-console-primary" disabled={busy}>Verify official source</button><button type="button" disabled={busy} onClick={() => holdLead(lead.id)}>Keep private for later</button></div></form>}
       </article>) : <div className="director-console-empty">No unverified private discovery leads are waiting.</div>}</div>
-      {verificationPackets.length > 0 && <div className="director-console-grid" style={{ marginTop: 14 }}>{verificationPackets.map((packet) => { let evidence: any = {}; try { evidence = JSON.parse(packet.evidenceJson); } catch {} return <article className="director-console-card" key={packet.id}><small>PRIVATE OFFICIAL EVIDENCE / {packet.confidence?.toUpperCase()} CONFIDENCE</small><h3>{evidence?.officialAnnouncement?.title || "Verified official announcement"}</h3><p>{packet.source?.domain || "Approved official source"} · {packet.sourceDate?.slice(0, 10) || "source date not visibly stated"}</p><a href={packet.normalizedUrl} target="_blank" rel="noreferrer">Open official announcement ↗</a><p className="director-console-helper">No article, profile, calendar record, taxonomy field, or public page was created.</p></article>; })}</div>}
+      {verificationPackets.length > 0 && <><h3 style={{ marginTop: 24 }}>Completed private verification</h3><div className="director-console-grid" style={{ marginTop: 14 }}>{verificationPackets.map((packet) => { let evidence: any = {}; try { evidence = JSON.parse(packet.evidenceJson); } catch {} return <article className="director-console-card" key={packet.id}><small>DONE / PRIVATE OFFICIAL EVIDENCE</small><h3>{evidence?.officialAnnouncement?.title || "Verified official announcement"}</h3><p>{packet.source?.domain || "Approved official source"} · {packet.sourceDate?.slice(0, 10) || "source date not visibly stated"}</p><a href={packet.normalizedUrl} target="_blank" rel="noreferrer">Open official announcement ↗</a><p className="director-console-helper">Nothing public was created. This is ready for a separate source-first content decision.</p></article>; })}</div></>}
     </section>
     {visiblePackets.map((packet) => {
       let evidence: any = {}; try { evidence = JSON.parse(packet.evidenceJson); } catch {}
